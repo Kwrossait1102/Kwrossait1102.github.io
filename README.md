@@ -1,16 +1,20 @@
-# Seminar Blog: Recent Applications of Machine Learning
+<div align="center">
 
-**Authors:** Aran Moradi and Qianyu Bu  
-**Semester:** 2026SS
+# Seminar Blog  
+## Recent Applications of Machine Learning
 
----
+**Summer Semester 2026**
 
-## Author Information
+<br>
+
+### Authors
 
 | Name | Student ID | Email |
-|---|---|---|
+|:---|:---:|:---|
 | Aran Moradi | xxx | xxx |
 | Qianyu Bu | 3730364 | st188433@stud.uni-stuttgart.de |
+
+</div>
 
 ---
 
@@ -18,10 +22,31 @@
 
 ## SegLLM: Multi-round Reasoning Segmentation
 
+---
+
 ### Background and Problem
-Current LLM models or detection models, are inable to handle multi-round, interactive conversations. For instance, if there is a request on a segmentation (e.g.: “highlight the man with the white hoodie”), current models can not handle additional queries based on the previous mask output (e.g.: “mask the bike behind the man from the previous prompt).
+
+Current LLM or detection models are unable to handle multi-round interactive conversations. 
+
+For example, when a user requests a segmentation task such as:
+
+> “Highlight the man with the white hoodie.”
+
+most existing models cannot process follow-up queries based on the previously generated mask output, such as:
+
+> “Mask the bike behind the man from the previous prompt.”
+
+This limitation makes interactive segmentation difficult in real-world conversational scenarios.
+
+---
 
 ### Method
-Unlike other state-of-the-art model, SegLLM feeds previous segmentation outputs of the mask decoder into the LLM, and the conversation context into the input query of the mask decoder. 
+
+Unlike other state-of-the-art approaches, SegLLM feeds previous segmentation outputs from the mask decoder back into the LLM. 
+
+At the same time, the conversation context is integrated into the query input of the mask decoder. This enables the model to maintain contextual understanding across multiple interaction rounds.
+
+---
 
 ### Experiment
+
