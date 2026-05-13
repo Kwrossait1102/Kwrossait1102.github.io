@@ -1,3 +1,12 @@
+<style>
+  body { font-family: 'Segoe UI', sans-serif; max-width: 860px; margin: auto; }
+  h1, h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 6px; }
+  blockquote { background: #f0f7ff; border-left: 4px solid #3498db; padding: 10px 16px; border-radius: 4px; }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { border: 1px solid #ddd; padding: 8px 12px; }
+  th { background: #3498db; color: white; }
+</style>
+
 <div align="center">
   <h1>Seminar Blog</h1>
   <h2>Recent Applications of Machine Learning</h2>
