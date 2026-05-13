@@ -205,3 +205,29 @@ When the LLM generates the [SEG] token in its output, this token acts as a trigg
 ---
 
 ### 4. Results
+
+SegLLM outperforms the previous state-of-the-art method LISA by 18~30% on the multi-round MRSeg benchmark, and also achieves a 5.5% improvement in cIoU and 4.5% improvement in Acc@0.5 on the standard single-round RefCOCO benchmark.
+
+#### 4.1 Evaluation Metrics
+
+#### 4.2 Ablation Study
+
+#### 4.3 Conclusions
+
+Overall, SegLLM does a great job at bringing image segmentation into a multi-round conversation setting, beating existing methods by a large margin while also getting better results on single-round tasks. 
+
+But it still has some weak spots: it can get confused when the conversation order changes, it tends to rely a lot on positional words in queries, and it has trouble when there are multiple similar objects in the same image or when the question is not very clear. 
+
+---
+
+### 5. Our Opnion
+
+We find SegLLM to be a genuinely interesting piece of work, as it solves a real limitation in existing segmentation models - the inability to follow up on previously segmented objects. This significantly raises the ceiling for this type of task.
+
+However, We do have two concerns. First, if the model makes a wrong segmentation in the first round, that error could potentially carry forward into all subsequent rounds, since each round builds on top of previous outputs. This raises the question of how robust the model is to early-stage mistakes.
+
+Second, the model appears to be sensitive to the order of conversation history, which could be a practical issue in real-world use. Drawing from practices in NLP evaluation, where it is common to not only test on the original input, but also reverse the option order or paraphrase the query to test stability. I think a similar approach should be applied here. Testing SegLLM with reordered or paraphrased conversation histories would give a more reliable picture of how robust the model actually is in practice.
+
+---
+
+### Reference
