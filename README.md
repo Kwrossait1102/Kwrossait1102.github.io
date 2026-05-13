@@ -1,230 +1,793 @@
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SegLLM: Multi-round Reasoning Segmentation — ml.notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
 
-  body {
-    font-family: 'IBM Plex Sans', sans-serif;
-    max-width: 780px;
-    margin: 0 auto;
-    padding: 2.5rem 1.5rem;
-    color: #24292e;
-    line-height: 1.8;
-    font-size: 14.5px;
-    background: #fff;
-  }
+    /* ── Design tokens ── */
+    :root {
+      --bg:          #fafaf8;
+      --bg-2:        #f5f2ec;
+      --bg-3:        #f0ede6;
+      --border:      #e8e6e1;
+      --border-2:    #d9d5cd;
+      --text-1:      #1a1a1a;
+      --text-2:      #4a453f;
+      --text-3:      #6b6456;
+      --text-4:      #9e9488;
+      --text-5:      #c9c2b8;
+      --accent:      #7c6f5b;
+      --accent-2:    #a39484;
+      --green:       #3d7a3d;
+      --green-bg:    #eef4ee;
+      --green-border:#7aad7a;
+      --green-text:  #3d5c3d;
+      --nav-h:       56px;
+      --content-w:   1060px;
+      --article-w:   680px;
+    }
 
-  /* ── Top meta ── */
-  .blog-meta { margin-bottom: 2.5rem; }
-  .blog-meta .eyebrow {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    color: #8b949e;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-  }
-  .blog-meta .eyebrow span { color: #57606a; }
-  .blog-meta h1 {
-    font-size: 28px;
-    font-weight: 600;
-    color: #24292e;
-    border: none;
-    margin: 0 0 4px;
-    padding: 0;
-    line-height: 1.2;
-  }
-  .blog-meta h2 {
-    font-size: 17px;
-    font-weight: 300;
-    color: #57606a;
-    border: none;
-    margin: 0 0 1.5rem;
-    padding: 0;
-  }
-  .blog-meta .authors {
-    display: flex;
-    gap: 2.5rem;
-    flex-wrap: wrap;
-    padding-bottom: 2rem;
-    border-bottom: 0.5px solid #d0d7de;
-  }
-  .blog-meta .author { display: flex; flex-direction: column; gap: 3px; }
-  .blog-meta .author .name { font-size: 13px; font-weight: 500; color: #24292e; }
-  .blog-meta .author .sid {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    color: #8b949e;
-  }
-  .blog-meta .author .email {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    color: #57606a;
-  }
+    /* ── Base ── */
+    body {
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      background: var(--bg);
+      color: var(--text-1);
+      -webkit-font-smoothing: antialiased;
+    }
 
-  /* ── Section headings ── */
-  h1 {
-    font-size: 22px; font-weight: 600; color: #24292e;
-    border-bottom: 0.5px solid #d0d7de;
-    padding-bottom: 8px; margin-top: 3rem;
-  }
-  h2 {
-    font-size: 16px; font-weight: 600; color: #24292e;
-    border-bottom: 0.5px solid #eaecef;
-    padding-bottom: 5px; margin-top: 0.3rem;
-  }
-  h3 {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    font-weight: 500;
-    color: #8b949e;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-top: 2.8rem;
-    margin-bottom: 0.8rem;
-    border: none;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  h3::after {
-    content: '';
-    flex: 1;
-    height: 0.5px;
-    background: #d0d7de;
-    display: inline-block;
-  }
-  h4 {
-    font-size: 14px;
-    font-weight: 600;
-    color: #24292e;
-    margin-top: 1.8rem;
-    margin-bottom: 0.4rem;
-    border: none;
-    padding: 0;
-  }
+    /* ──────────────────────────────────────────
+       NAV
+    ────────────────────────────────────────── */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: var(--nav-h);
+      background: rgba(250, 250, 248, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+    }
 
-  /* ── Body ── */
-  p { margin: 0.7rem 0; color: #57606a; }
+    .nav-brand {
+      font-family: 'Lora', serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-1);
+      text-decoration: none;
+      letter-spacing: -0.01em;
+    }
+    .nav-brand span { color: var(--accent); }
 
-  /* ── Blockquote ── */
-  blockquote {
-    margin: 1.2rem 0;
-    padding: 12px 16px;
-    background: #f6f8fa;
-    border-left: 2px solid #d0d7de;
-    border-radius: 0;
-    font-style: italic;
-    color: #57606a;
-    font-size: 14px;
-  }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+    .nav-links a {
+      font-size: 13px;
+      color: var(--text-3);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--text-1); }
 
-  /* ── Inline code ── */
-  code {
-    font-family: 'IBM Plex Mono', monospace;
-    background: #f6f8fa;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 12.5px;
-    color: #B07D48;
-    border: 0.5px solid #d0d7de;
-  }
+    .nav-tag {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      background: var(--bg-3);
+      color: var(--accent);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
 
-  /* ── HR ── */
-  hr {
-    border: none;
-    border-top: 0.5px solid #d0d7de;
-    margin: 2rem 0;
-  }
-</style>
+    /* ──────────────────────────────────────────
+       LAYOUT
+    ────────────────────────────────────────── */
+    .layout {
+      max-width: var(--content-w);
+      margin: 0 auto;
+      padding: 3.5rem 2rem 5rem;
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 4.5rem;
+      align-items: start;
+    }
 
-<div class="blog-meta">
-  <div class="eyebrow">Seminar Blog &nbsp;/&nbsp; <span>Recent Applications of Machine Learning</span> &nbsp;/&nbsp; Summer Semester 2026</div>
-  <h1>Blog Post 1</h1>
-  <h2>SegLLM: Multi-round Reasoning Segmentation</h2>
-  <div class="authors">
-    <div class="author">
-      <span class="name">Aran Moradi</span>
-      <span class="sid">ID: xxx</span>
-      <span class="email">xxx</span>
+    /* ──────────────────────────────────────────
+       ARTICLE HEADER
+    ────────────────────────────────────────── */
+    .article-header {
+      margin-bottom: 2.5rem;
+    }
+
+    .article-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 1.1rem;
+    }
+    .eyebrow-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+      background: var(--bg-3);
+      padding: 3px 10px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+    }
+    .eyebrow-dot { color: var(--text-5); font-size: 12px; }
+    .eyebrow-meta { font-size: 12px; color: var(--text-4); }
+
+    .article-title {
+      font-family: 'Lora', serif;
+      font-size: 32px;
+      font-weight: 600;
+      line-height: 1.22;
+      color: var(--text-1);
+      letter-spacing: -0.02em;
+      margin-bottom: 0.7rem;
+    }
+
+    .article-subtitle {
+      font-size: 15.5px;
+      font-weight: 300;
+      color: var(--text-3);
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    .author-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Avatar group */
+    .avatar-group { display: flex; }
+    .avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      border: 2px solid var(--bg);
+      margin-left: -6px;
+    }
+    .avatar:first-child { margin-left: 0; }
+    .avatar-1 { background: var(--accent); }
+    .avatar-2 { background: var(--accent-2); }
+
+    .author-names { font-size: 13px; color: var(--text-3); }
+    .author-names strong { color: var(--text-1); font-weight: 500; }
+
+    .read-time {
+      margin-left: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-4);
+    }
+
+    /* ──────────────────────────────────────────
+       SECTION LABELS
+    ────────────────────────────────────────── */
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 2.6rem 0 1.1rem;
+    }
+    .section-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-5);
+      min-width: 20px;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-4);
+      white-space: nowrap;
+    }
+    .section-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ──────────────────────────────────────────
+       BODY TYPOGRAPHY
+    ────────────────────────────────────────── */
+    .sub-heading {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-1);
+      margin: 1.8rem 0 0.5rem;
+      letter-spacing: -0.01em;
+    }
+
+    .body-text {
+      font-size: 14.5px;
+      color: var(--text-2);
+      line-height: 1.88;
+      margin: 0.7rem 0;
+    }
+
+    /* Callout / blockquote */
+    .callout {
+      margin: 1.5rem 0;
+      padding: 14px 20px;
+      background: var(--bg-2);
+      border-left: 3px solid #c9b99a;
+      border-radius: 0 6px 6px 0;
+      font-family: 'Lora', serif;
+      font-style: italic;
+      font-size: 14.5px;
+      color: var(--text-3);
+      line-height: 1.75;
+    }
+
+    /* Highlight box (success) */
+    .highlight-box {
+      margin: 1.3rem 0;
+      padding: 14px 20px;
+      background: var(--green-bg);
+      border-left: 3px solid var(--green-border);
+      border-radius: 0 6px 6px 0;
+      font-size: 13.5px;
+      color: var(--green-text);
+      line-height: 1.75;
+    }
+    .highlight-box strong { font-weight: 600; }
+
+    /* Inline code */
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      background: var(--bg-3);
+      color: #7c5c38;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid var(--border-2);
+    }
+
+    /* Divider */
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 2rem 0;
+    }
+
+    /* ──────────────────────────────────────────
+       STAT CARDS
+    ────────────────────────────────────────── */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 1.5rem 0;
+    }
+
+    .stat-card {
+      background: var(--bg-2);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-num {
+      font-family: 'Lora', serif;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-1);
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+    .stat-num.pos { color: var(--green); }
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-4);
+      margin-top: 5px;
+      line-height: 1.45;
+    }
+
+    /* ──────────────────────────────────────────
+       OPINION BLOCK
+    ────────────────────────────────────────── */
+    .opinion-block {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem 1.6rem;
+      margin: 1.5rem 0;
+    }
+    .opinion-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-4);
+      margin-bottom: 0.9rem;
+    }
+    .opinion-item {
+      display: flex;
+      gap: 12px;
+      margin: 0.75rem 0;
+      font-size: 14px;
+      color: var(--text-2);
+      line-height: 1.75;
+    }
+    .opinion-bullet {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #c9b99a;
+      margin-top: 9px;
+      flex-shrink: 0;
+    }
+
+    /* ──────────────────────────────────────────
+       ARTICLE FOOTER
+    ────────────────────────────────────────── */
+    .article-footer {
+      margin-top: 2.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .footer-cite {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-4);
+    }
+    .footer-actions { display: flex; gap: 8px; }
+    .footer-btn {
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      color: var(--accent);
+      background: var(--bg-3);
+      border: none;
+      padding: 6px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .footer-btn:hover { background: var(--border-2); }
+
+    /* ──────────────────────────────────────────
+       SIDEBAR
+    ────────────────────────────────────────── */
+    .sidebar {
+      position: sticky;
+      top: calc(var(--nav-h) + 2rem);
+    }
+
+    .sidebar-section { margin-bottom: 2rem; }
+
+    .sidebar-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-5);
+      margin-bottom: 0.75rem;
+    }
+
+    /* Table of Contents */
+    .toc-list { list-style: none; }
+    .toc-list li {
+      font-size: 12.5px;
+      color: var(--text-4);
+      padding: 4px 0 4px 12px;
+      border-left: 2px solid transparent;
+      cursor: pointer;
+      line-height: 1.4;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .toc-list li:hover { color: var(--text-1); }
+    .toc-list li.active {
+      color: var(--text-1);
+      border-left-color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* Progress */
+    .progress-bar-wrap {
+      background: var(--border);
+      border-radius: 4px;
+      height: 3px;
+      margin-bottom: 6px;
+    }
+    .progress-bar {
+      height: 3px;
+      border-radius: 4px;
+      background: var(--accent);
+      transition: width 0.2s ease;
+    }
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-4);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Tag cloud */
+    .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag {
+      font-size: 11px;
+      color: var(--accent);
+      background: var(--bg-3);
+      padding: 3px 10px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .tag:hover { background: var(--border-2); }
+
+    /* Related posts */
+    .related-card {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .related-card:last-child { border-bottom: none; }
+    .related-card-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-1);
+      line-height: 1.4;
+      margin-bottom: 3px;
+      transition: color 0.15s;
+    }
+    .related-card:hover .related-card-title { color: var(--accent); }
+    .related-card-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-4);
+    }
+
+    /* ──────────────────────────────────────────
+       RESPONSIVE
+    ────────────────────────────────────────── */
+    @media (max-width: 800px) {
+      .layout {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        padding: 2rem 1.2rem 4rem;
+      }
+      .sidebar {
+        position: static;
+        border-top: 1px solid var(--border);
+        padding-top: 2rem;
+      }
+      .stat-row { grid-template-columns: 1fr 1fr; }
+      .article-title { font-size: 26px; }
+      .nav { padding: 0 1.2rem; }
+    }
+
+    @media (max-width: 480px) {
+      .stat-row { grid-template-columns: 1fr; }
+      .nav-links a:not(.nav-tag) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ──────────────────────────────────────────
+       NAV
+  ────────────────────────────────────────── -->
+  <nav class="nav">
+    <a class="nav-brand" href="#">ml.notes<span>.</span></a>
+    <div class="nav-links">
+      <a href="#">Archive</a>
+      <a href="#">Papers</a>
+      <a href="#">About</a>
+      <span class="nav-tag">SS 2026</span>
     </div>
-    <div class="author">
-      <span class="name">Qianyu Bu</span>
-      <span class="sid">ID: 3730364</span>
-      <span class="email">st188433@stud.uni-stuttgart.de</span>
-    </div>
+  </nav>
+
+  <!-- ──────────────────────────────────────────
+       MAIN LAYOUT
+  ────────────────────────────────────────── -->
+  <div class="layout">
+
+    <!-- ── ARTICLE ── -->
+    <article>
+
+      <!-- Header -->
+      <header class="article-header">
+        <div class="article-eyebrow">
+          <span class="eyebrow-tag">segmentation</span>
+          <span class="eyebrow-dot">·</span>
+          <span class="eyebrow-meta">Blog Post 01 &nbsp;·&nbsp; May 2026</span>
+        </div>
+        <h1 class="article-title">SegLLM: Multi-round Reasoning Segmentation</h1>
+        <p class="article-subtitle">
+          Making image segmentation conversational — feeding previous mask outputs back into the LLM to enable coherent, multi-turn interaction.
+        </p>
+        <div class="author-row">
+          <div class="avatar-group">
+            <div class="avatar avatar-1">AM</div>
+            <div class="avatar avatar-2">QB</div>
+          </div>
+          <div class="author-names">
+            <strong>Aran Moradi</strong> &amp; <strong>Qianyu Bu</strong>
+          </div>
+          <span class="read-time">~7 min read</span>
+        </div>
+      </header>
+
+      <!-- ── Section 1 ── -->
+      <div class="section-label">
+        <span class="section-num">01</span>
+        <span class="section-title">Background &amp; Problem</span>
+        <span class="section-line"></span>
+      </div>
+
+      <p class="body-text">
+        Current LLM-based segmentation models handle single-turn queries well — but fall apart the moment a user wants to follow up on a previously generated mask. The conversation dies after round one.
+      </p>
+
+      <div class="callout">
+        "Highlight the man with the white hoodie." — then: "Mask the bike <em>behind the man from the previous prompt</em>." This second query is beyond what most existing models can handle.
+      </div>
+
+      <p class="body-text">
+        This limitation breaks the natural flow of interactive segmentation, which is increasingly important in real-world annotation, editing, and scene understanding pipelines.
+      </p>
+
+      <!-- ── Section 2 ── -->
+      <div class="section-label">
+        <span class="section-num">02</span>
+        <span class="section-title">Method</span>
+        <span class="section-line"></span>
+      </div>
+
+      <p class="body-text">
+        SegLLM's key design decision is a <strong>feedback loop</strong>: previous segmentation outputs from the mask decoder are fed <em>back into</em> the LLM, while conversation context is injected into the mask decoder's query input. This bidirectional coupling is what prior work lacked.
+      </p>
+
+      <h2 class="sub-heading">2.1 Model Structure</h2>
+
+      <p class="body-text">
+        The <strong>image encoder</strong> (CLIP or DINOv2) transforms the input image into patch representations and converts them into embeddings. A <strong>projection layer</strong> then aligns these visual embeddings with the LLM's text embedding space, allowing joint processing of both modalities.
+      </p>
+
+      <p class="body-text">
+        The <strong>LLM</strong> (e.g. Llama) processes the combined visual and textual input and generates an output sequence. Critically, the model is trained to emit a special token <code>[SEG]</code> whenever segmentation output is required — acting as a clean learned interface to the mask decoder.
+      </p>
+
+      <div class="highlight-box">
+        <strong>Key insight:</strong> the <code>[SEG]</code> token bridges language understanding and pixel-level segmentation without handcrafted heuristics — when to segment is learned, not programmed.
+      </div>
+
+      <!-- ── Section 3 ── -->
+      <div class="section-label">
+        <span class="section-num">03</span>
+        <span class="section-title">Experiment</span>
+        <span class="section-line"></span>
+      </div>
+
+      <h2 class="sub-heading">3.1 Dataset</h2>
+      <p class="body-text">
+        <!-- TODO: fill in dataset details -->
+      </p>
+
+      <h2 class="sub-heading">3.2 Pipeline</h2>
+      <p class="body-text">
+        <!-- TODO: fill in pipeline details -->
+      </p>
+
+      <h2 class="sub-heading">3.3 Training</h2>
+      <p class="body-text">
+        <!-- TODO: fill in training details -->
+      </p>
+
+      <!-- ── Section 4 ── -->
+      <div class="section-label">
+        <span class="section-num">04</span>
+        <span class="section-title">Results</span>
+        <span class="section-line"></span>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-num pos">+18–30%</div>
+          <div class="stat-label">vs. LISA on MRSeg benchmark (multi-round)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num pos">+5.5%</div>
+          <div class="stat-label">cIoU on RefCOCO (single-round)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num pos">+4.5%</div>
+          <div class="stat-label">Acc@0.5 on RefCOCO</div>
+        </div>
+      </div>
+
+      <p class="body-text">
+        The gains on single-round benchmarks are particularly notable — SegLLM does not trade off single-turn performance to support multi-turn interaction; it improves both simultaneously.
+      </p>
+
+      <h2 class="sub-heading">4.1 Evaluation Metrics</h2>
+      <p class="body-text">
+        <!-- TODO: fill in metrics details -->
+      </p>
+
+      <h2 class="sub-heading">4.2 Ablation Study</h2>
+      <p class="body-text">
+        <!-- TODO: fill in ablation details -->
+      </p>
+
+      <h2 class="sub-heading">4.3 Conclusions</h2>
+      <p class="body-text">
+        SegLLM does a great job at bringing image segmentation into a multi-round conversation setting, beating existing methods by a large margin while also achieving better results on single-round tasks. The feedback architecture generalises well across both settings.
+      </p>
+
+      <!-- ── Section 5 ── -->
+      <div class="section-label">
+        <span class="section-num">05</span>
+        <span class="section-title">Our Opinion</span>
+        <span class="section-line"></span>
+      </div>
+
+      <p class="body-text">
+        We find SegLLM to be a genuinely interesting piece of work. It solves a real and previously underexplored limitation — the inability to follow up on previously segmented objects — which significantly raises the ceiling for interactive segmentation.
+      </p>
+
+      <div class="opinion-block">
+        <div class="opinion-label">Two open concerns</div>
+        <div class="opinion-item">
+          <div class="opinion-bullet"></div>
+          <div>
+            <strong>Error propagation.</strong> If the model makes a wrong segmentation in round one, that error may carry into all subsequent rounds — since each round builds directly on top of previous outputs. How robust is the model to early-stage mistakes?
+          </div>
+        </div>
+        <div class="opinion-item">
+          <div class="opinion-bullet"></div>
+          <div>
+            <strong>Order sensitivity.</strong> The model appears sensitive to conversation ordering. Drawing on NLP evaluation practice — where reversed options or paraphrased queries are standard tests — a similar approach should be applied here. Testing SegLLM with reordered or rephrased conversation histories would give a more reliable picture of true robustness.
+          </div>
+        </div>
+      </div>
+
+      <hr />
+
+      <!-- ── References ── -->
+      <div class="section-label">
+        <span class="section-num">Ref</span>
+        <span class="section-title">References</span>
+        <span class="section-line"></span>
+      </div>
+
+      <p class="body-text">
+        <!-- TODO: add references here -->
+      </p>
+
+      <!-- Footer -->
+      <footer class="article-footer">
+        <span class="footer-cite">Recent Applications of ML · Seminar Blog · SS 2026</span>
+        <div class="footer-actions">
+          <button class="footer-btn">Cite</button>
+          <button class="footer-btn">Share ↗</button>
+        </div>
+      </footer>
+
+    </article>
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar">
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">On this page</div>
+        <ul class="toc-list" id="toc">
+          <li class="active" data-section="s1">Background &amp; Problem</li>
+          <li data-section="s2">Method</li>
+          <li data-section="s3">Experiments</li>
+          <li data-section="s4">Results</li>
+          <li data-section="s5">Our Opinion</li>
+          <li data-section="s6">References</li>
+        </ul>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">Reading progress</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+        </div>
+        <div class="progress-meta">
+          <span>Progress</span>
+          <span id="progress-pct">0%</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">Tags</div>
+        <div class="tag-cloud">
+          <span class="tag">segmentation</span>
+          <span class="tag">multimodal</span>
+          <span class="tag">LLM</span>
+          <span class="tag">CLIP</span>
+          <span class="tag">DINOv2</span>
+          <span class="tag">RefCOCO</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">Related posts</div>
+        <div class="related-card">
+          <div class="related-card-title">LISA: Reasoning Segmentation via LLM</div>
+          <div class="related-card-meta">Blog Post 02</div>
+        </div>
+        <div class="related-card">
+          <div class="related-card-title">SAM 2: Segment Anything in Video</div>
+          <div class="related-card-meta">Blog Post 03</div>
+        </div>
+        <div class="related-card">
+          <div class="related-card-title">Grounded-SAM: Open-vocab Segmentation</div>
+          <div class="related-card-meta">Blog Post 04</div>
+        </div>
+      </div>
+
+    </aside>
   </div>
-</div>
 
----
+  <!-- ──────────────────────────────────────────
+       SCROLL PROGRESS + TOC HIGHLIGHT
+  ────────────────────────────────────────── -->
+  <script>
+    // Reading progress bar
+    function updateProgress() {
+      const doc   = document.documentElement;
+      const total = doc.scrollHeight - doc.clientHeight;
+      const pct   = total > 0 ? Math.round((window.scrollY / total) * 100) : 0;
+      document.getElementById('progress-bar').style.width = pct + '%';
+      document.getElementById('progress-pct').textContent  = pct + '%';
+    }
+    window.addEventListener('scroll', updateProgress, { passive: true });
+    updateProgress();
 
-### 1. Background and Problem
+    // TOC active state — map items to section labels by index
+    const tocItems = document.querySelectorAll('#toc li');
+    const sectionLabels = document.querySelectorAll('.section-label');
 
-Current LLM or detection models are unable to handle multi-round interactive conversations.
+    function updateToc() {
+      let current = 0;
+      sectionLabels.forEach((el, i) => {
+        if (el.getBoundingClientRect().top < 120) current = i;
+      });
+      tocItems.forEach((li, i) => {
+        li.classList.toggle('active', i === current);
+      });
+    }
+    window.addEventListener('scroll', updateToc, { passive: true });
+  </script>
 
-For example, when a user requests a segmentation task such as:
-
-> "Highlight the man with the white hoodie."
-
-most existing models cannot process follow-up queries based on the previously generated mask output, such as:
-
-> "Mask the bike behind the man from the previous prompt."
-
-This limitation makes interactive segmentation difficult in real-world conversational scenarios.
-
----
-
-### 2. Method
-
-Unlike other state-of-the-art approaches, SegLLM feeds previous segmentation outputs from the mask decoder back into the LLM.
-
-At the same time, the conversation context is integrated into the query input of the mask decoder. This enables the model to maintain contextual understanding across multiple interaction rounds.
-
-#### 2.1 Model Structure
-
-First, there is an image encoder such as CLIP or DINOv2. The encoder transforms the input image into patch representations, which are then converted into embeddings.
-
-Second, a large language model (LLM), such as Llama, is used to process the input text, combine it with the visual information, and generate an output sequence. Importantly, the model is trained to produce a special token `[SEG]` when a segmentation output is required.
-
-The third component is the projection layer, which aligns the image embeddings with the text embedding space. This allows the LLM to process both modalities jointly.
-
-When the LLM generates the `[SEG]` token in its output, this token acts as a trigger for a segmentation module. A separate mask decoder then uses the internal visual features to generate the final segmentation mask.
-
----
-
-### 3. Experiment
-
-#### 3.1 Data Set
-
-#### 3.2 Pipeline
-
-#### 3.3 Training
-
----
-
-### 4. Results
-
-SegLLM outperforms the previous state-of-the-art method LISA by 18~30% on the multi-round MRSeg benchmark, and also achieves a 5.5% improvement in cIoU and 4.5% improvement in Acc@0.5 on the standard single-round RefCOCO benchmark.
-
-#### 4.1 Evaluation Metrics
-
-#### 4.2 Ablation Study
-
-#### 4.3 Conclusions
-
-Overall, SegLLM does a great job at bringing image segmentation into a multi-round conversation setting, beating existing methods by a large margin while also getting better results on single-round tasks.
-
-But it still has some weak spots: it can get confused when the conversation order changes, it tends to rely a lot on positional words in queries, and it has trouble when there are multiple similar objects in the same image or when the question is not very clear.
-
----
-
-### 5. Our Opinion
-
-We find SegLLM to be a genuinely interesting piece of work, as it solves a real limitation in existing segmentation models — the inability to follow up on previously segmented objects. This significantly raises the ceiling for this type of task.
-
-However, we do have two concerns. First, if the model makes a wrong segmentation in the first round, that error could potentially carry forward into all subsequent rounds, since each round builds on top of previous outputs. This raises the question of how robust the model is to early-stage mistakes.
-
-Second, the model appears to be sensitive to the order of conversation history, which could be a practical issue in real-world use. Drawing from practices in NLP evaluation, where it is common to not only test on the original input, but also reverse the option order or paraphrase the query to test stability, a similar approach should be applied here. Testing SegLLM with reordered or paraphrased conversation histories would give a more reliable picture of how robust the model actually is in practice.
-
----
-
-### Reference
+</body>
+</html>
