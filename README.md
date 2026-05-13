@@ -1,19 +1,30 @@
 <div align="center">
-
-# Seminar Blog  
-## Recent Applications of Machine Learning
-
-**Summer Semester 2026**
-
-<br>
-
-### Authors
-
-| Name | Student ID | Email |
-|:---|:---:|:---|
-| Aran Moradi | xxx | xxx |
-| Qianyu Bu | 3730364 | st188433@stud.uni-stuttgart.de |
-
+  <h1>Seminar Blog</h1>
+  <h2>Recent Applications of Machine Learning</h2>
+  <strong>Summer Semester 2026</strong>
+  <br><br>
+  <h3>Authors</h3>
+  <table>
+    <thead>
+      <tr>
+        <th align="left">Name</th>
+        <th align="center">Student ID</th>
+        <th align="left">Email</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Aran Moradi</td>
+        <td align="center">xxx</td>
+        <td>xxx</td>
+      </tr>
+      <tr>
+        <td>Qianyu Bu</td>
+        <td align="center">3730364</td>
+        <td>st188433@stud.uni-stuttgart.de</td>
+      </tr>
+    </tbody>
+  </table>
 </div>
 
 ---
