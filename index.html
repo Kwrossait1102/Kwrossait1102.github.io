@@ -579,6 +579,15 @@ layout: blank
 
       <h2 class="sub-heading">2.1 Model Structure</h2>
 
+      <img 
+        src="assets/Model_Structure.png" 
+        alt="SegLLM model architecture diagram" 
+        style="width: 100%; border-radius: 8px; margin: 1rem 0 0.4rem;"
+      />
+      <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
+        Figure 1: SegLLM architecture overview. Previous mask outputs are fed back into the LLM via Mask Encoder and Box Encoder, enabling multi-round reasoning segmentation.
+      </p>
+
       <p class="body-text">
         The <strong>image encoder</strong> (CLIP or DINOv2) transforms the input image into patch representations and converts them into embeddings. A <strong>projection layer</strong> then aligns these visual embeddings with the LLM's text embedding space, allowing joint processing of both modalities.
       </p>
