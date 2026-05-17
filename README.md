@@ -1,3 +1,7 @@
+---
+layout: blank
+---
+
 <!DOCTYPE html>
 <html lang="zh">
 <head>
