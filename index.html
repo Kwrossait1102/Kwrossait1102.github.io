@@ -3,20 +3,18 @@ layout: blank
 ---
 
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SegLLM: Multi-round Reasoning Segmentation — ml.notes</title>
+  <title>SegLLM: Multi-round Reasoning Segmentation — Seminar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
-    /* ── Reset ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
 
-    /* ── Design tokens ── */
     :root {
       --bg:          #fafaf8;
       --bg-2:        #f5f2ec;
@@ -39,7 +37,6 @@ layout: blank
       --article-w:   680px;
     }
 
-    /* ── Base ── */
     body {
       font-family: 'Inter', sans-serif;
       font-size: 15px;
@@ -49,9 +46,7 @@ layout: blank
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ──────────────────────────────────────────
-       NAV
-    ────────────────────────────────────────── */
+    /* NAV */
     .nav {
       position: sticky;
       top: 0;
@@ -65,7 +60,6 @@ layout: blank
       justify-content: space-between;
       padding: 0 2rem;
     }
-
     .nav-brand {
       font-family: 'Lora', serif;
       font-size: 18px;
@@ -75,7 +69,6 @@ layout: blank
       letter-spacing: -0.01em;
     }
     .nav-brand span { color: var(--accent); }
-
     .nav-links {
       display: flex;
       align-items: center;
@@ -88,7 +81,6 @@ layout: blank
       transition: color 0.15s;
     }
     .nav-links a:hover { color: var(--text-1); }
-
     .nav-tag {
       font-size: 11px;
       font-weight: 500;
@@ -99,9 +91,7 @@ layout: blank
       border-radius: 20px;
     }
 
-    /* ──────────────────────────────────────────
-       LAYOUT
-    ────────────────────────────────────────── */
+    /* LAYOUT */
     .layout {
       max-width: var(--content-w);
       margin: 0 auto;
@@ -112,13 +102,8 @@ layout: blank
       align-items: start;
     }
 
-    /* ──────────────────────────────────────────
-       ARTICLE HEADER
-    ────────────────────────────────────────── */
-    .article-header {
-      margin-bottom: 2.5rem;
-    }
-
+    /* ARTICLE HEADER */
+    .article-header { margin-bottom: 2.5rem; }
     .article-eyebrow {
       display: flex;
       align-items: center;
@@ -136,7 +121,6 @@ layout: blank
     }
     .eyebrow-dot { color: var(--text-5); font-size: 12px; }
     .eyebrow-meta { font-size: 12px; color: var(--text-4); }
-
     .article-title {
       font-family: 'Lora', serif;
       font-size: 32px;
@@ -146,7 +130,6 @@ layout: blank
       letter-spacing: -0.02em;
       margin-bottom: 0.7rem;
     }
-
     .article-subtitle {
       font-size: 15.5px;
       font-weight: 300;
@@ -154,7 +137,6 @@ layout: blank
       line-height: 1.6;
       margin-bottom: 1.5rem;
     }
-
     .author-row {
       display: flex;
       align-items: center;
@@ -162,8 +144,6 @@ layout: blank
       padding-top: 1.2rem;
       border-top: 1px solid var(--border);
     }
-
-    /* Avatar group */
     .avatar-group { display: flex; }
     .avatar {
       width: 30px;
@@ -181,10 +161,8 @@ layout: blank
     .avatar:first-child { margin-left: 0; }
     .avatar-1 { background: var(--accent); }
     .avatar-2 { background: var(--accent-2); }
-
     .author-names { font-size: 13px; color: var(--text-3); }
     .author-names strong { color: var(--text-1); font-weight: 500; }
-
     .read-time {
       margin-left: auto;
       font-family: 'JetBrains Mono', monospace;
@@ -192,9 +170,7 @@ layout: blank
       color: var(--text-4);
     }
 
-    /* ──────────────────────────────────────────
-       SECTION LABELS
-    ────────────────────────────────────────── */
+    /* SECTION LABELS */
     .section-label {
       display: flex;
       align-items: center;
@@ -221,9 +197,7 @@ layout: blank
       background: var(--border);
     }
 
-    /* ──────────────────────────────────────────
-       BODY TYPOGRAPHY
-    ────────────────────────────────────────── */
+    /* BODY TYPOGRAPHY */
     .sub-heading {
       font-size: 15px;
       font-weight: 600;
@@ -231,15 +205,12 @@ layout: blank
       margin: 1.8rem 0 0.5rem;
       letter-spacing: -0.01em;
     }
-
     .body-text {
       font-size: 14.5px;
       color: var(--text-2);
       line-height: 1.88;
       margin: 0.7rem 0;
     }
-
-    /* Callout / blockquote */
     .callout {
       margin: 1.5rem 0;
       padding: 14px 20px;
@@ -252,8 +223,6 @@ layout: blank
       color: var(--text-3);
       line-height: 1.75;
     }
-
-    /* Highlight box (success) */
     .highlight-box {
       margin: 1.3rem 0;
       padding: 14px 20px;
@@ -265,8 +234,6 @@ layout: blank
       line-height: 1.75;
     }
     .highlight-box strong { font-weight: 600; }
-
-    /* Inline code */
     code {
       font-family: 'JetBrains Mono', monospace;
       font-size: 12.5px;
@@ -276,24 +243,19 @@ layout: blank
       border-radius: 4px;
       border: 1px solid var(--border-2);
     }
-
-    /* Divider */
     hr {
       border: none;
       border-top: 1px solid var(--border);
       margin: 2rem 0;
     }
 
-    /* ──────────────────────────────────────────
-       STAT CARDS
-    ────────────────────────────────────────── */
+    /* STAT CARDS */
     .stat-row {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 12px;
       margin: 1.5rem 0;
     }
-
     .stat-card {
       background: var(--bg-2);
       border-radius: 10px;
@@ -316,9 +278,7 @@ layout: blank
       line-height: 1.45;
     }
 
-    /* ──────────────────────────────────────────
-       OPINION BLOCK
-    ────────────────────────────────────────── */
+    /* OPINION BLOCK */
     .opinion-block {
       background: var(--bg-2);
       border: 1px solid var(--border);
@@ -351,9 +311,7 @@ layout: blank
       flex-shrink: 0;
     }
 
-    /* ──────────────────────────────────────────
-       ARTICLE FOOTER
-    ────────────────────────────────────────── */
+    /* ARTICLE FOOTER */
     .article-footer {
       margin-top: 2.5rem;
       padding-top: 1.5rem;
@@ -383,16 +341,12 @@ layout: blank
     }
     .footer-btn:hover { background: var(--border-2); }
 
-    /* ──────────────────────────────────────────
-       SIDEBAR
-    ────────────────────────────────────────── */
+    /* SIDEBAR */
     .sidebar {
       position: sticky;
       top: calc(var(--nav-h) + 2rem);
     }
-
     .sidebar-section { margin-bottom: 2rem; }
-
     .sidebar-label {
       font-size: 10px;
       font-weight: 600;
@@ -401,8 +355,6 @@ layout: blank
       color: var(--text-5);
       margin-bottom: 0.75rem;
     }
-
-    /* Table of Contents */
     .toc-list { list-style: none; }
     .toc-list li {
       font-size: 12.5px;
@@ -419,8 +371,6 @@ layout: blank
       border-left-color: var(--accent);
       font-weight: 500;
     }
-
-    /* Progress */
     .progress-bar-wrap {
       background: var(--border);
       border-radius: 4px;
@@ -440,8 +390,6 @@ layout: blank
       color: var(--text-4);
       font-family: 'JetBrains Mono', monospace;
     }
-
-    /* Tag cloud */
     .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
     .tag {
       font-size: 11px;
@@ -454,31 +402,31 @@ layout: blank
     }
     .tag:hover { background: var(--border-2); }
 
-    /* Related posts */
-    .related-card {
-      padding: 10px 0;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
+    /* REFERENCES */
+    .ref-list {
+      list-style: none;
+      counter-reset: ref-counter;
     }
-    .related-card:last-child { border-bottom: none; }
-    .related-card-title {
+    .ref-list li {
+      counter-increment: ref-counter;
       font-size: 13px;
-      font-weight: 500;
-      color: var(--text-1);
-      line-height: 1.4;
-      margin-bottom: 3px;
-      transition: color 0.15s;
+      color: var(--text-3);
+      line-height: 1.75;
+      margin: 0.6rem 0;
+      padding-left: 2rem;
+      position: relative;
     }
-    .related-card:hover .related-card-title { color: var(--accent); }
-    .related-card-meta {
+    .ref-list li::before {
+      content: "[" counter(ref-counter) "]";
+      position: absolute;
+      left: 0;
       font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
-      color: var(--text-4);
+      color: var(--text-5);
+      top: 3px;
     }
 
-    /* ──────────────────────────────────────────
-       RESPONSIVE
-    ────────────────────────────────────────── */
+    /* RESPONSIVE */
     @media (max-width: 800px) {
       .layout {
         grid-template-columns: 1fr;
@@ -494,7 +442,6 @@ layout: blank
       .article-title { font-size: 26px; }
       .nav { padding: 0 1.2rem; }
     }
-
     @media (max-width: 480px) {
       .stat-row { grid-template-columns: 1fr; }
       .nav-links a:not(.nav-tag) { display: none; }
@@ -503,9 +450,6 @@ layout: blank
 </head>
 <body>
 
-  <!-- ──────────────────────────────────────────
-       NAV
-  ────────────────────────────────────────── -->
   <nav class="nav">
     <a class="nav-brand" href="#">Seminar<span>:</span> Current Applications for Machine Learning</a>
     <div class="nav-links">
@@ -516,15 +460,9 @@ layout: blank
     </div>
   </nav>
 
-  <!-- ──────────────────────────────────────────
-       MAIN LAYOUT
-  ────────────────────────────────────────── -->
   <div class="layout">
-
-    <!-- ── ARTICLE ── -->
     <article>
 
-      <!-- Header -->
       <header class="article-header">
         <div class="article-eyebrow">
           <span class="eyebrow-tag">segmentation</span>
@@ -554,8 +492,24 @@ layout: blank
         <span class="section-line"></span>
       </div>
 
+      <h2 class="sub-heading">1.1 What is Image Segmentation?</h2>
+
       <p class="body-text">
-        Current LLM-based segmentation models handle single-turn queries well — but fall apart the moment a user wants to follow up on a previously generated mask. The conversation dies after round one.
+        Image segmentation is the task of partitioning a digital image into multiple regions by assigning a label to every pixel, such that pixels with the same label share certain visual characteristics [6]. It is one of the most fundamental problems in computer vision, underpinning applications from medical imaging and autonomous driving to scene understanding and interactive editing.
+      </p>
+
+      <p class="body-text">
+        The field has evolved through several major paradigms. Early deep learning approaches such as <strong>FCN</strong> (Fully Convolutional Networks) [1] replaced fully connected layers with convolutional ones, enabling end-to-end pixel-wise prediction. The <strong>Mask R-CNN</strong> family [2] extended object detection pipelines to produce instance-level masks. More recently, transformer-based architectures such as <strong>MaskFormer</strong> [3] unified semantic and instance segmentation under a single query-based framework.
+      </p>
+
+      <p class="body-text">
+        The introduction of <strong>SAM</strong> (Segment Anything Model, Kirillov et al., 2023) [4] marked a paradigm shift: trained on over 1 billion masks, SAM demonstrated strong zero-shot generalisation across diverse images using simple point or box prompts. Building on this, <strong>LISA</strong> (Lai et al., 2023) [5] introduced <em>reasoning segmentation</em> — the ability to produce segmentation masks from complex, implicit natural language queries rather than direct referring expressions.
+      </p>
+
+      <h2 class="sub-heading">1.2 The Problem: Single-turn Limitation</h2>
+
+      <p class="body-text">
+        Despite these advances, current LLM-based segmentation models handle only single-turn queries — the conversation dies after round one. A user cannot follow up on a previously generated mask.
       </p>
 
       <div class="callout">
@@ -581,20 +535,19 @@ layout: blank
         In the Live Demo below, you can see that we are able to continue querying based on the segmentation result from the previous round of interaction, and perform further segmentation.
       </p>
 
-      <img src="live_demo.gif" 
-        alt="SegLLM multi-round segmentation demo" 
+      <img src="assets/live_demo.gif"
+        alt="SegLLM multi-round segmentation demo"
         style="width: 100%; border-radius: 8px; margin: 1rem 0 0.4rem;"
       />
-
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
         Figure 1: Interactive Multi-Round Segmentation Demo.
       </p>
 
       <h2 class="sub-heading">2.1 Model Structure</h2>
 
-      <img 
-        src="segllm_architecture.png" 
-        alt="SegLLM model architecture diagram" 
+      <img
+        src="assets/segllm_architecture.png"
+        alt="SegLLM model architecture diagram"
         style="width: 100%; border-radius: 8px; margin: 1rem 0 0.4rem;"
       />
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
@@ -625,11 +578,10 @@ layout: blank
         The training data consists of multi-round conversational segmentation queries built on top of several existing public datasets, including RefCOCO, Visual Genome, PACO-LVIS, and COCO-Stuff. The dataset covers a diverse set of object relationships, including positional, hierarchical, and interactional relationships, with conversation templates refined using GPT-4 to ensure natural language fluency.
       </p>
 
-      <img src="dataset.png" 
-        alt="Dataset overview" 
+      <img src="assets/dataset.png"
+        alt="Dataset overview"
         style="width: 100%; border-radius: 8px; margin: 1rem 0 0.4rem;"
       />
-      
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
         Figure 3: Dataset overview showing multi-round conversational segmentation examples across different object relationship types.
       </p>
@@ -721,11 +673,15 @@ layout: blank
         <span class="section-line"></span>
       </div>
 
-      <p class="body-text">
-        <!-- TODO: add references here -->
-      </p>
+      <ol class="ref-list">
+        <li>Long, J., Shelhamer, E., &amp; Darrell, T. (2015). Fully convolutional networks for semantic segmentation. <em>CVPR 2015</em>.</li>
+        <li>He, K., Gkioxari, G., Dollár, P., &amp; Girshick, R. (2017). Mask R-CNN. <em>ICCV 2017</em>.</li>
+        <li>Cheng, B., Misra, I., Schwing, A. G., Kirillov, A., &amp; Girdhar, R. (2022). Masked-attention mask transformer for universal image segmentation. <em>CVPR 2022</em>.</li>
+        <li>Kirillov, A., et al. (2023). Segment Anything. <em>ICCV 2023</em>. arXiv:2304.02643.</li>
+        <li>Lai, X., Tian, Z., Chen, Y., Li, Y., Yuan, Y., Liu, S., &amp; Jia, J. (2023). LISA: Reasoning Segmentation via Large Language Model. <em>CVPR 2024</em>. arXiv:2308.00692.</li>
+        <li>Minaee, S., Boykov, Y., Porikli, F., Plaza, A., Kehtarnavaz, N., &amp; Terzopoulos, D. (2021). Image Segmentation Using Deep Learning: A Survey. <em>IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)</em>. arXiv:2001.05566.</li>
+      </ol>
 
-      <!-- Footer -->
       <footer class="article-footer">
         <span class="footer-cite">Recent Applications of ML · Seminar Blog · SS 2026</span>
         <div class="footer-actions">
@@ -742,12 +698,12 @@ layout: blank
       <div class="sidebar-section">
         <div class="sidebar-label">On this page</div>
         <ul class="toc-list" id="toc">
-          <li class="active" data-section="s1">Background &amp; Problem</li>
-          <li data-section="s2">Method</li>
-          <li data-section="s3">Experiments</li>
-          <li data-section="s4">Results</li>
-          <li data-section="s5">Our Opinion</li>
-          <li data-section="s6">References</li>
+          <li class="active">Background &amp; Problem</li>
+          <li>Method</li>
+          <li>Experiments</li>
+          <li>Results</li>
+          <li>Our Opinion</li>
+          <li>References</li>
         </ul>
       </div>
 
@@ -776,17 +732,12 @@ layout: blank
 
       <div class="sidebar-section">
         <div class="sidebar-label">Related posts</div>
-        </div>
       </div>
 
     </aside>
   </div>
 
-  <!-- ──────────────────────────────────────────
-       SCROLL PROGRESS + TOC HIGHLIGHT
-  ────────────────────────────────────────── -->
   <script>
-    // Reading progress bar
     function updateProgress() {
       const doc   = document.documentElement;
       const total = doc.scrollHeight - doc.clientHeight;
@@ -797,7 +748,6 @@ layout: blank
     window.addEventListener('scroll', updateProgress, { passive: true });
     updateProgress();
 
-    // TOC active state — map items to section labels by index
     const tocItems = document.querySelectorAll('#toc li');
     const sectionLabels = document.querySelectorAll('.section-label');
 
