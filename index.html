@@ -577,6 +577,11 @@ layout: blank
         SegLLM's key design decision is a <strong>feedback loop</strong>: previous segmentation outputs from the mask decoder are fed <em>back into</em> the LLM, while conversation context is injected into the mask decoder's query input. This bidirectional coupling is what prior work lacked.
       </p>
 
+      <img src="live_demo.gif" 
+        alt="SegLLM multi-round segmentation demo" 
+        style="width: 100%; border-radius: 8px; margin: 1rem 0 0.4rem;"
+      />
+
       <h2 class="sub-heading">2.1 Model Structure</h2>
 
       <img 
