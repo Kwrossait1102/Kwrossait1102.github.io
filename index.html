@@ -445,6 +445,12 @@ layout: blank
       font-size: 14px;
       color: var(--text-2);
       line-height: 1.75;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .opinion-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
     }
     .opinion-bullet {
       width: 6px;
@@ -626,9 +632,20 @@ layout: blank
           <div class="author-names">
             <strong>Aran Moradi</strong> &amp; <strong>Qianyu Bu</strong>
           </div>
-          <span class="read-time">~7 min read</span>
+          <span class="read-time">~10 min read</span>
         </div>
       </header>
+
+      <!-- ── Motivation ── -->
+      <div class="section-label">
+        <span class="section-num">00</span>
+        <span class="section-title">Motivation</span>
+        <span class="section-line"></span>
+      </div>
+
+      <p class="body-text">
+        Interactive image segmentation plays an important role in medical imaging, helping doctors precisely annotate structures like tumours, organs, and blood vessels to support diagnosis and surgical planning [1]. In practice, doctors rarely ask just one question and stop. Instead, they work through a series of steps — first locating a tumour, then checking the surrounding vasculature, then isolating a specific organ. This process is naturally multi-round. Research has shown that interactive segmentation tools can reduce annotation workload by three to four times compared to traditional manual annotation [2]. The problem is that existing tools treat each query independently. Every time a user asks a new question, they have to re-establish the full context from scratch. This is especially frustrating in medical settings, where anatomical structures are closely related and the result of one segmentation step is almost always the starting point for the next. Bridging this gap — giving models the ability to remember previous interactions — is exactly what motivates the work we discuss in this post.
+      </p>
 
       <!-- ── Section 1 ── -->
       <div class="section-label">
@@ -644,11 +661,11 @@ layout: blank
       </div>
 
       <p class="body-text">
-        Image segmentation is the task of partitioning a digital image into multiple regions by assigning a label to every pixel, such that pixels with the same label share certain visual characteristics [1]. It is one of the most fundamental problems in computer vision, underpinning applications from medical imaging and autonomous driving to scene understanding and interactive editing.
+        Image segmentation is the task of partitioning a digital image into multiple regions by assigning a label to every pixel, such that pixels with the same label share certain visual characteristics [3]. It is one of the most fundamental problems in computer vision, underpinning applications from medical imaging and autonomous driving to scene understanding and interactive editing.
       </p>
 
       <p class="body-text">
-        The field has evolved through several major paradigms. Early deep learning approaches such as <strong>FCN</strong> (Fully Convolutional Networks) [2] replaced fully connected layers with convolutional ones, enabling end-to-end pixel-wise prediction. The <strong>Mask R-CNN</strong> family [3] extended object detection pipelines to produce instance-level masks. More recently, transformer-based architectures such as <strong>MaskFormer</strong> [4] unified semantic and instance segmentation under a single query-based framework. The introduction of <strong>SAM</strong> (Segment Anything Model) [5] marked a further paradigm shift: trained on over 1 billion masks, SAM demonstrated strong zero-shot generalisation across diverse images using simple point or box prompts.
+        The field has evolved through several major paradigms. Early deep learning approaches such as <strong>FCN</strong> (Fully Convolutional Networks) [4] replaced fully connected layers with convolutional ones, enabling end-to-end pixel-wise prediction. The <strong>Mask R-CNN</strong> family [5] extended object detection pipelines to produce instance-level masks. More recently, transformer-based architectures such as <strong>MaskFormer</strong> [6] unified semantic and instance segmentation under a single query-based framework. The introduction of <strong>SAM</strong> (Segment Anything Model) [7] marked a further paradigm shift: trained on over 1 billion masks, SAM demonstrated strong zero-shot generalisation across diverse images using simple point or box prompts.
       </p>
 
       <div class="sub-heading">
@@ -658,11 +675,11 @@ layout: blank
       </div>
 
       <p class="body-text">
-        Reasoning in Large Language Models refers to the ability to solve complex problems through multi-step inference, drawing on learned knowledge to chain intermediate conclusions towards a final answer [6]. Unlike simple pattern matching, LLM reasoning involves understanding context, resolving ambiguity, and following implicit logical structure. This capability has been demonstrated across diverse tasks including mathematical problem solving, commonsense inference, and question answering [7].
+        Reasoning in Large Language Models refers to the ability to solve complex problems through multi-step inference, drawing on learned knowledge to chain intermediate conclusions towards a final answer [8]. Unlike simple pattern matching, LLM reasoning involves understanding context, resolving ambiguity, and following implicit logical structure. This capability has been demonstrated across diverse tasks including mathematical problem solving, commonsense inference, and question answering [9].
       </p>
 
       <p class="body-text">
-        Reasoning segmentation extends this idea into the visual domain: given an implicit, complex natural language query, the model must reason about image content to understand relationships, context, and intent before producing a segmentation mask [8]. This goes beyond simply matching a text label to a visual region. Models such as <strong>LLaVA</strong> [9] showed that aligning visual encoders with LLMs through instruction tuning enables rich cross-modal reasoning. Building on this, <strong>LISA</strong> [8] operationalised reasoning segmentation by introducing a learned <code>[SEG]</code> token as a clean interface between language-level reasoning and pixel-level mask output, without any handcrafted heuristics for when or what to segment.
+        Reasoning segmentation extends this idea into the visual domain: given an implicit, complex natural language query, the model must reason about image content to understand relationships, context, and intent before producing a segmentation mask [10]. This goes beyond simply matching a text label to a visual region. Models such as <strong>LLaVA</strong> [11] showed that aligning visual encoders with LLMs through instruction tuning enables rich cross-modal reasoning. Building on this, <strong>LISA</strong> [10] operationalised reasoning segmentation by introducing a learned <code>[SEG]</code> token as a clean interface between language-level reasoning and pixel-level mask output, without any handcrafted heuristics for when or what to segment.
       </p>
 
       <div class="sub-heading">
@@ -1003,19 +1020,36 @@ layout: blank
       </p>
 
       <div class="opinion-block">
-        <div class="opinion-label">Two open concerns</div>
+        <div class="opinion-label">Four open concerns</div>
+
         <div class="opinion-item">
           <div class="opinion-bullet"></div>
           <div>
-            <strong>Error propagation.</strong> If the model makes a wrong segmentation in round one, that error may carry into all subsequent rounds, since each round builds directly on top of previous outputs. How robust is the model to early-stage mistakes?
+            <strong>Error propagation.</strong> If the model makes a wrong segmentation in round one, that error may carry into all subsequent rounds, since each round builds directly on top of previous outputs. This is particularly concerning because the Mask Encoding Module encodes the incorrect mask's spatial bounding box directly into the LLM's input stream — meaning corrupted location information gets passed forward as if it were reliable context. The MRSeg results already hint at this: cIoU declines as rounds increase, which may partly reflect accumulated error rather than just increased task complexity. It would be valuable to know how the model performs when intentionally given a wrong first-round mask.
           </div>
         </div>
+
         <div class="opinion-item">
           <div class="opinion-bullet"></div>
           <div>
-            <strong>Order sensitivity.</strong> The model appears sensitive to conversation ordering. Drawing on NLP evaluation practice, where reversed options or paraphrased queries are standard tests, a similar approach should be applied here. Testing SegLLM with reordered or rephrased conversation histories would give a more reliable picture of true robustness.
+            <strong>Order sensitivity.</strong> The model appears sensitive to conversation ordering, since the <code>[REF]</code> token mechanism is built up sequentially with no global attention over all historical rounds. For example, asking "segment the person" first and then "segment the bag she is holding" may give a different result than asking about the bag before establishing the person as a reference. Drawing on NLP evaluation practice, where reversed options or paraphrased queries are standard robustness tests, a similar approach should be applied here. Testing SegLLM with reordered conversation histories would give a clearer picture of whether the model truly understands relationships or is simply pattern-matching the order of prompts.
           </div>
         </div>
+
+        <div class="opinion-item">
+          <div class="opinion-bullet"></div>
+          <div>
+            <strong>Scalability over long conversations.</strong> As the number of rounds increases, the mask embeddings and bounding box embeddings fed back into the LLM grow linearly. The paper only evaluates up to 8 rounds on the MRSeg benchmark. In longer real-world conversations — such as a radiologist annotating dozens of structures in a single session — the context window may become a limiting factor. It is unclear how the model degrades when the number of historical mask embeddings exceeds what the LLM can effectively attend to.
+          </div>
+        </div>
+
+        <div class="opinion-item">
+          <div class="opinion-bullet"></div>
+          <div>
+            <strong>No correction mechanism.</strong> If a user realises that a mask from an earlier round was wrong, there is no way to correct it within the framework. The incorrect mask has already been encoded into the conversation history and will continue to influence all future rounds. A practical deployment of SegLLM would need some form of undo or correction interface, but the paper does not address this. This is especially relevant in medical settings, where annotation errors can have serious downstream consequences.
+          </div>
+        </div>
+
       </div>
 
       <hr />
@@ -1028,6 +1062,8 @@ layout: blank
       </div>
 
       <ol class="ref-list">
+        <li>Nature Index. Interactive Image Segmentation in Medical Applications. <em>Nature Research Intelligence</em>. Available at: nature.com/nature-index.</li>
+        <li>Shaeri, et al. (2025). Explainable Human-in-the-Loop Segmentation via Critic Feedback Signals. arXiv:2510.09945.</li>
         <li>Minaee, S., Boykov, Y., Porikli, F., Plaza, A., Kehtarnavaz, N., &amp; Terzopoulos, D. (2021). Image Segmentation Using Deep Learning: A Survey. <em>IEEE Transactions on Pattern Analysis and Machine Intelligence</em>. arXiv:2001.05566.</li>
         <li>Long, J., Shelhamer, E., &amp; Darrell, T. (2015). Fully Convolutional Networks for Semantic Segmentation. <em>CVPR 2015</em>.</li>
         <li>He, K., Gkioxari, G., Dollár, P., &amp; Girshick, R. (2017). Mask R-CNN. <em>ICCV 2017</em>.</li>
@@ -1055,7 +1091,8 @@ layout: blank
       <div class="sidebar-section">
         <div class="sidebar-label">On this page</div>
         <ul class="toc-list" id="toc">
-          <li class="active">Background &amp; Problem</li>
+          <li class="active">Motivation</li>
+          <li>Background &amp; Problem</li>
           <li>Method</li>
           <li>Experiments</li>
           <li>Results</li>
