@@ -269,6 +269,39 @@ layout: blank
       margin: 2rem 0;
     }
 
+    /* INFO CARDS */
+    .info-card-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 1.3rem 0;
+    }
+    .info-card {
+      background: var(--bg-2);
+      border-radius: 10px;
+      padding: 18px;
+      border: 1px solid var(--border);
+    }
+    .info-card-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-4);
+      margin-bottom: 8px;
+    }
+    .info-card-body {
+      font-size: 13.5px;
+      color: var(--text-2);
+      line-height: 1.75;
+    }
+    .info-card-cite {
+      font-size: 11px;
+      color: var(--text-5);
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 8px;
+    }
+
     /* PIPELINE STEPS */
     .pipeline-steps {
       margin: 1.3rem 0;
@@ -590,6 +623,7 @@ layout: blank
       }
       .stat-row { grid-template-columns: 1fr 1fr; }
       .config-grid { grid-template-columns: 1fr; }
+      .info-card-grid { grid-template-columns: 1fr; }
       .article-title { font-size: 26px; }
       .nav { padding: 0 1.2rem; }
     }
@@ -732,6 +766,23 @@ layout: blank
       <p class="body-text">
         The <strong>image encoder</strong> (CLIP or DINOv2) transforms the input image into patch representations and converts them into embeddings. A <strong>projection layer</strong> then aligns these visual embeddings with the LLM's text embedding space, allowing joint processing of both modalities. The <strong>LLM</strong> (LLaVA) processes the combined input and generates an output sequence, emitting a special token <code>[SEG]</code> whenever segmentation output is required, serving as a learned interface to the mask decoder.
       </p>
+
+      <div class="info-card-grid">
+        <div class="info-card">
+          <div class="info-card-label">What is CLIP?</div>
+          <div class="info-card-body">
+            CLIP (Contrastive Language-Image Pretraining) is a model developed by OpenAI that learns to connect images and text by training on hundreds of millions of image-caption pairs. Instead of learning to classify images into fixed categories, CLIP learns a shared embedding space where similar images and texts are placed close together. This makes it very good at understanding visual content through natural language, even for concepts it has never seen labelled before.
+          </div>
+          <div class="info-card-cite">Radford et al., ICML 2021 [12]</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">What is LLaVA?</div>
+          <div class="info-card-body">
+            LLaVA (Large Language and Vision Assistant) is a multimodal model that connects a visual encoder with a large language model through a simple projection layer. It is fine-tuned on visual instruction data, teaching the model to answer questions and follow instructions about images. LLaVA serves as the backbone LLM in SegLLM, providing the language reasoning capability that drives the multi-round conversation.
+          </div>
+          <div class="info-card-cite">Liu et al., NeurIPS 2023 [11]</div>
+        </div>
+      </div>
 
       <img
         src="assets/segllm_architecture.png"
@@ -1025,7 +1076,7 @@ layout: blank
         <div class="opinion-item">
           <div class="opinion-bullet"></div>
           <div>
-            <strong>Error propagation.</strong> If the model makes a wrong segmentation in round one, that error may carry into all subsequent rounds, since each round builds directly on top of previous outputs. This is particularly concerning because the Mask Encoding Module encodes the incorrect mask's spatial bounding box directly into the LLM's input stream — meaning corrupted location information gets passed forward as if it were reliable context. The MRSeg results already hint at this: cIoU declines as rounds increase, which may partly reflect accumulated error rather than just increased task complexity. It would be valuable to know how the model performs when intentionally given a wrong first-round mask.
+            <strong>Error propagation.</strong> If the model makes a wrong segmentation in round one, that error may carry into all subsequent rounds, since each round builds directly on top of previous outputs. This is particularly concerning because the Mask Encoding Module encodes the incorrect mask's spatial bounding box directly into the LLM's input stream, meaning corrupted location information gets passed forward as if it were reliable context. The MRSeg results already hint at this: cIoU declines as rounds increase, which may partly reflect accumulated error rather than just increased task complexity. It would be valuable to know how the model performs when intentionally given a wrong first-round mask.
           </div>
         </div>
 
@@ -1073,6 +1124,7 @@ layout: blank
         <li>Brown, T., et al. (2020). Language Models are Few-Shot Learners (GPT-3). <em>NeurIPS 2020</em>. arXiv:2005.14165.</li>
         <li>Lai, X., Tian, Z., Chen, Y., Li, Y., Yuan, Y., Liu, S., &amp; Jia, J. (2023). LISA: Reasoning Segmentation via Large Language Model. <em>CVPR 2024</em>. arXiv:2308.00692.</li>
         <li>Liu, H., Li, C., Wu, Q., &amp; Lee, Y. J. (2023). Visual Instruction Tuning (LLaVA). <em>NeurIPS 2023</em>. arXiv:2304.08485.</li>
+        <li>Radford, A., Kim, J. W., Hallacy, C., Ramesh, A., Goh, G., Agarwal, S., et al. (2021). Learning Transferable Visual Models From Natural Language Supervision (CLIP). <em>ICML 2021</em>. arXiv:2103.00020.</li>
       </ol>
 
       <footer class="article-footer">
