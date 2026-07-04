@@ -1043,7 +1043,85 @@ layout: blank
       </div>
 
       <p class="body-text">
-        SegLLM addresses this by introducing a <strong>feedback loop</strong>: previous segmentation outputs from the mask decoder are fed back into the LLM, while conversation context is injected into the mask decoder's query input. This bidirectional coupling is what prior work lacked.
+        Section 1.5 pinpointed exactly where the single-round architecture breaks down: once the mask decoder produces an output, that information has nowhere to go, since nothing connects it back to the LLM. SegLLM's core contribution is to add that missing connection. After each round, the mask the decoder has just produced is encoded and fed back into the LLM as part of the input for the next round, so the LLM entering round 2 has direct access to what was segmented in round 1. This turns the one-way pipeline from Figure 0b into a loop.
+      </p>
+
+      <svg viewBox="0 0 900 460" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; margin: 1.3rem 0; font-family: 'Inter', sans-serif;">
+        <defs>
+          <marker id="arrow-2-0" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" style="fill: var(--accent-2);"></path>
+          </marker>
+        </defs>
+
+        <!-- Image input -->
+        <rect x="15" y="20" width="105" height="50" rx="8" style="fill: var(--bg-2); stroke: var(--border-2); stroke-width: 1;"></rect>
+        <text x="67" y="50" text-anchor="middle" style="font-size: 12.5px; fill: var(--text-2); font-weight: 500;">Image</text>
+
+        <!-- Text query input -->
+        <rect x="15" y="185" width="105" height="50" rx="8" style="fill: var(--bg-2); stroke: var(--border-2); stroke-width: 1;"></rect>
+        <text x="67" y="215" text-anchor="middle" style="font-size: 12.5px; fill: var(--text-2); font-weight: 500;">Text Query</text>
+
+        <!-- Previous masks and info input -->
+        <rect x="15" y="350" width="105" height="60" rx="8" style="fill: var(--bg-2); stroke: var(--border-2); stroke-width: 1;"></rect>
+        <text x="67" y="376" text-anchor="middle" style="font-size: 11px; fill: var(--text-2); font-weight: 500;">Previous</text>
+        <text x="67" y="392" text-anchor="middle" style="font-size: 11px; fill: var(--text-2); font-weight: 500;">Masks &amp; Info</text>
+
+        <!-- arrows into encoders -->
+        <path d="M 120 45 L 175 45" style="stroke: var(--accent-2); stroke-width: 1.5; fill: none;" marker-end="url(#arrow-2-0)"></path>
+        <path d="M 120 210 L 175 210" style="stroke: var(--accent-2); stroke-width: 1.5; fill: none;" marker-end="url(#arrow-2-0)"></path>
+        <path d="M 120 380 L 175 380" style="stroke: var(--accent-2); stroke-width: 1.5; fill: none;" marker-end="url(#arrow-2-0)"></path>
+
+        <!-- Image Encoder -->
+        <rect x="180" y="10" width="135" height="70" rx="10" style="fill: var(--bg-3); stroke: var(--border-2); stroke-width: 1;"></rect>
+        <text x="247" y="50" text-anchor="middle" style="font-size: 13px; fill: var(--text-1); font-weight: 600;">Image Encoder</text>
+
+        <!-- Text Encoder -->
+        <rect x="180" y="175" width="135" height="70" rx="10" style="fill: var(--bg-3); stroke: var(--border-2); stroke-width: 1;"></rect>
+        <text x="247" y="215" text-anchor="middle" style="font-size: 13px; fill: var(--text-1); font-weight: 600;">Text Encoder</text>
+
+        <!-- Mask Encoder -->
+        <rect x="180" y="345" width="135" height="70" rx="10" style="fill: var(--bg-3); stroke: var(--border-2); stroke-width: 1;"></rect>
+        <text x="247" y="385" text-anchor="middle" style="font-size: 13px; fill: var(--text-1); font-weight: 600;">Mask Encoder</text>
+
+        <!-- arrows converging into LLM -->
+        <path d="M 315 45 C 375 45, 375 165, 425 175" style="stroke: var(--accent-2); stroke-width: 1.5; fill: none;" marker-end="url(#arrow-2-0)"></path>
+        <path d="M 315 210 L 425 210" style="stroke: var(--accent-2); stroke-width: 1.5; fill: none;" marker-end="url(#arrow-2-0)"></path>
+        <path d="M 315 380 C 375 380, 375 255, 425 245" style="stroke: var(--accent-2); stroke-width: 1.5; fill: none;" marker-end="url(#arrow-2-0)"></path>
+
+        <!-- LLM -->
+        <rect x="430" y="140" width="150" height="140" rx="10" style="fill: var(--bg-2); stroke: var(--accent); stroke-width: 1.4;"></rect>
+        <text x="505" y="182" text-anchor="middle" style="font-size: 14px; fill: var(--text-1); font-weight: 700;">LLM</text>
+        <text x="505" y="205" text-anchor="middle" style="font-size: 10.5px; fill: var(--text-3); font-family: 'JetBrains Mono', monospace;">reasoning →</text>
+        <text x="505" y="221" text-anchor="middle" style="font-size: 10.5px; fill: var(--text-3); font-family: 'JetBrains Mono', monospace;">generates</text>
+        <text x="505" y="240" text-anchor="middle" style="font-size: 11.5px; fill: var(--accent); font-weight: 600; font-family: 'JetBrains Mono', monospace;">[SEG] token</text>
+
+        <!-- arrow to mask decoder -->
+        <path d="M 580 210 L 635 210" style="stroke: var(--accent-2); stroke-width: 1.5; fill: none;" marker-end="url(#arrow-2-0)"></path>
+
+        <!-- Mask Decoder -->
+        <rect x="640" y="165" width="150" height="90" rx="10" style="fill: var(--green-bg); stroke: var(--green-border); stroke-width: 1.2;"></rect>
+        <text x="715" y="200" text-anchor="middle" style="font-size: 13px; fill: var(--green-text); font-weight: 600;">Mask Decoder</text>
+        <text x="715" y="218" text-anchor="middle" style="font-size: 10px; fill: var(--green-text); opacity: 0.8; font-family: 'JetBrains Mono', monospace;">[SEG] hidden state</text>
+        <text x="715" y="233" text-anchor="middle" style="font-size: 10px; fill: var(--green-text); opacity: 0.8; font-family: 'JetBrains Mono', monospace;">→ mask</text>
+
+        <!-- arrow to output -->
+        <path d="M 790 210 L 830 210" style="stroke: var(--accent-2); stroke-width: 1.5; fill: none;" marker-end="url(#arrow-2-0)"></path>
+
+        <!-- Output Mask -->
+        <rect x="835" y="175" width="60" height="70" rx="8" style="fill: var(--bg); stroke: var(--accent); stroke-width: 1.4;"></rect>
+        <rect x="845" y="187" width="40" height="46" rx="20" style="fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-dasharray: 4 3;"></rect>
+        <text x="865" y="260" text-anchor="middle" style="font-size: 10px; fill: var(--text-4); font-family: 'JetBrains Mono', monospace;">Mask</text>
+
+        <!-- loop path: mask decoder output back to "Previous Masks & Info" input, routed below the boxes to avoid crossing them -->
+        <path d="M 715 255 L 715 430 L 67 430 L 67 411" style="stroke: var(--accent-2); stroke-width: 1.5; fill: none;" marker-end="url(#arrow-2-0)"></path>
+      </svg>
+
+      <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-top: -0.6rem; margin-bottom: 1.5rem;">
+        Figure 0c: Simplified architecture diagram. The Mask Encoder sits alongside the Image and Text Encoders and feeds the previous round's masks and information back into the LLM, closing the loop that Figure 0b was missing. (Exact encoding details are covered in Section 2.2.)
+      </p>
+
+      <p class="body-text">
+        SegLLM also makes a second, related change: conversation context is fed into the mask decoder itself, not just into the LLM. We leave the details of this second change for Section 2.3, once the relevant tokens have been introduced; for now, the feedback path from mask decoder back to LLM is the key idea to take away.
       </p>
 
       <p class="body-text">
@@ -1060,12 +1138,37 @@ layout: blank
 
       <div class="sub-heading">
         <span class="sub-heading-num">2.1</span>
-        <span class="sub-heading-text">Model Structure</span>
+        <span class="sub-heading-text">Model Architecture</span>
         <span class="sub-heading-line"></span>
       </div>
 
+      <div style="display: flex; align-items: center; gap: 20px; background: var(--green-bg); border: 1px solid var(--green-border); border-radius: 10px; padding: 16px 22px; margin: 1.3rem 0;">
+        <div style="flex-shrink: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--green-text); background: rgba(255,255,255,0.5); padding: 6px 14px; border-radius: 20px; white-space: nowrap;">Recap</div>
+        <div style="font-size: 14px; color: var(--green-text); line-height: 1.7;">Our goal is to predict <strong>a segmentation mask</strong> from <strong>an image and a natural language prompt</strong>, following the architecture introduced in Section 1.4.</div>
+      </div>
+
       <p class="body-text">
-        The <strong>image encoder</strong> (CLIP or DINOv2) transforms the input image into patch representations and converts them into embeddings. A <strong>projection layer</strong> then aligns these visual embeddings with the LLM's text embedding space, allowing joint processing of both modalities. The <strong>LLM</strong> (LLaVA) processes the combined input and generates an output sequence, emitting a special token <code>[SEG]</code> whenever segmentation output is required, serving as a learned interface to the mask decoder.
+        The image is first processed by the <strong>image encoder</strong> (CLIP or DINOv2), which transforms it into patch representations and converts them into embeddings.
+      </p>
+
+      <p class="body-text">
+        The text prompt does not go through a separate text encoder. As noted in Section 1.4, the LLM here is itself a multimodal VLM (LLaVA), so the text query is simply tokenized and embedded using the LLM's own embedding layer, the same way any text input to an LLM would be.
+      </p>
+
+      <p class="body-text">
+        On their own, the image encoder's visual embeddings live in a different representation space from the LLM's text embeddings, with different dimensions and statistics, so the LLM cannot directly treat them as part of its input sequence. A <strong>projection layer</strong> solves this by mapping the visual embeddings into the same space as the LLM's text embeddings, so that image and text can be processed jointly, as tokens in one shared sequence.
+      </p>
+
+      <p class="body-text">
+        The <strong>LLM</strong> then processes this combined sequence and generates an output, emitting a special token <code>[SEG]</code> whenever segmentation output is required, serving as a learned interface to the mask decoder. Deciding when to emit <code>[SEG]</code> is not a separate, rule-based step: it is simply the LLM predicting its next token as usual, trained to place <code>[SEG]</code> at the right point in the sequence. We return to how this training works in Section 3.3.
+      </p>
+
+      <p class="body-text">
+        Besides the image and text, the LLM also needs to know what has already been segmented in earlier rounds. This is the job of the <strong>Mask Encoder</strong>: it takes the mask produced in a previous round and encodes it into embeddings that are fed back into the LLM alongside the image and text embeddings, closing the loop shown earlier in Figure 0c. We describe exactly how this encoding works in Section 2.2.
+      </p>
+
+      <p class="body-text">
+        To make use of this history, the LLM uses a second special token alongside <code>[SEG]</code>, called <code>[REF]</code>. Where <code>[SEG]</code> marks the object to be segmented in the current round, <code>[REF]</code> marks an object segmented in an earlier round that the current query refers back to. Having two separate tokens lets the LLM distinguish "the new object I need to segment now" from "the earlier object this query is relating to", which is what makes cross-round references possible. We describe how <code>[REF]</code> and <code>[SEG]</code> are combined into decoder queries in Section 2.3.
       </p>
 
       <div class="info-card-grid">
