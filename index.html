@@ -670,7 +670,7 @@ layout: blank
           <div class="author-names">
             <strong>Aran Moradi</strong> &amp; <strong>Qianyu Bu</strong>
           </div>
-          <span class="read-time">~25 min read</span>
+          <span class="read-time">~22 min read</span>
         </div>
       </header>
 
@@ -1359,7 +1359,11 @@ layout: blank
       </div>
 
       <p class="body-text">
-        The training data consists of multi-round conversational segmentation queries built on top of several existing public datasets, including RefCOCO, Visual Genome, PACO-LVIS, and COCO-Stuff. The dataset covers a diverse set of object relationships, including positional, hierarchical, and interactional relationships, with conversation templates refined using GPT-4 to ensure natural language fluency.
+        The training data consists of multi-round conversational segmentation queries built on top of several existing public datasets, including RefCOCO, Visual Genome, PACO-LVIS, LVIS, Pascal Panoptic Part, ADE20K, and COCO-Stuff, among others. Since none of these datasets originally come as conversations, they have to be turned into one: the authors' pipeline first selects a set of instances in an image, works out the relationships between them, and then fits those instances and relationships into conversational templates, which are refined with an LLM afterwards so the final questions read naturally.
+      </p>
+
+      <p class="body-text">
+        The relationships covered fall into a few clear types, each with its own flavour of query: hierarchical (for example, "the hand of" a person), positional (for example, "to the left of"), and interactional (for example, "looking at"). Not every source dataset can support long conversations either; some, like Visual Genome or COCO-Stuff, mostly provide single-round queries, while others, like RefCOCO or PACO-LVIS, are rich enough in related instances to support conversations of well over ten rounds. This range is intentional: it lets SegLLM see both short, simple queries and long, relationship-heavy ones during training.
       </p>
 
       <img src="assets/dataset.png"
@@ -1381,19 +1385,18 @@ layout: blank
       </p>
 
       <p class="body-text">
-        Before looking at how SegLLM trains its two decoder queries, it helps to see how the simpler, single-token case works in LISA, since SegLLM's training builds directly on top of it. LISA trains the LLM on templated question-answer pairs where <code>[SEG]</code> is simply part of the target sentence, for example:
+        Before looking at how SegLLM trains its two decoder queries, it helps to see how the simpler, single-token case works in LISA, since SegLLM's training builds directly on top of it.
       </p>
-
-      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--text-2); background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 1.3rem 0; line-height: 1.9;">
-        USER: &lt;IMAGE&gt; Can you segment the {class name} in this image?<br>
-        ASSISTANT: It is <span style="color: var(--accent); font-weight: 600;">[SEG]</span>.
-      </div>
 
       <div class="info-card-grid" style="grid-template-columns: 1fr;">
         <div class="info-card" style="background: #f5ecd9; border-color: var(--accent-2);">
           <div class="info-card-label">Why exactly "It is [SEG]"?</div>
           <div class="info-card-body">
-            <p style="margin: 0 0 0.9em;">The LISA paper does not explain why it settled on this specific template, but we suspect it comes down to engineering convenience. A short, highly regular template like this guarantees that <code>[SEG]</code> always appears in a predictable position in the output, which makes both the training data and the extraction of its hidden state much simpler to implement.</p>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--text-2); background: rgba(255,255,255,0.5); border-radius: 8px; padding: 12px 16px; margin: 0 0 1em; line-height: 1.9;">
+              USER: &lt;IMAGE&gt; Can you segment the {class name} in this image?<br>
+              ASSISTANT: It is <span style="color: var(--accent); font-weight: 600;">[SEG]</span>.
+            </div>
+            <p style="margin: 0 0 0.9em;">LISA trains the LLM on templated question-answer pairs like this one, where <code>[SEG]</code> is simply part of the target sentence. The paper does not explain why it settled on this specific wording, but we suspect it comes down to engineering convenience. A short, highly regular template like this guarantees that <code>[SEG]</code> always appears in a predictable position in the output, which makes both the training data and the extraction of its hidden state much simpler to implement.</p>
             <p style="margin: 0 0 0.9em;">There is also a semantic argument for it: if the LLM outputs "it is" followed by a single token, that token is, grammatically, whatever "it" refers to, which is exactly the content we want the query vector to carry.</p>
             <p style="margin: 0;">Allowing free-form responses, or a more diverse set of templates, would likely require extra processing to locate <code>[SEG]</code> and to keep its meaning well defined, so we read this as a deliberate simplification, a trick, rather than a principled design choice. This reading lines up with how the field later reacted to it: <strong>LISA++</strong> [17] explicitly criticises this template as too rigid and unnatural, arguing it cannot adapt to the diversity of responses needed in real applications.</p>
           </div>
@@ -1421,7 +1424,7 @@ layout: blank
       </div>
 
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
-        Figure 2e: How a single <code>[SEG]</code> token is turned into a mask (LISA's "embedding-as-mask" mechanism).
+        Figure 3a: How a single <code>[SEG]</code> token is turned into a mask (LISA's "embedding-as-mask" mechanism).
       </p>
 
       <p class="body-text">
@@ -1446,24 +1449,27 @@ layout: blank
       </p>
 
       <p class="body-text">
-        Second, each of those two terms is itself a combination of cross-entropy (<code>L<sub>ce</sub></code>) and DICE loss (<code>L<sub>DICE</sub></code>), a standard pairing in segmentation, since the two catch different kinds of mistakes: one is stable but easily fooled by class imbalance, the other is robust to imbalance but noisier on its own. Combining them gives the model both a stable, pixel-level gradient and a signal that keeps it focused on the actual object.
+        Second, each of those two terms is itself a combination of cross-entropy (<code>L<sub>ce</sub></code>) and DICE loss (<code>L<sub>DICE</sub></code>), a standard pairing in segmentation, since the two catch different kinds of mistakes:
       </p>
 
-      <div style="display: flex; align-items: flex-start; gap: 20px; background: var(--bg); border: 1.3px solid var(--accent-2); border-radius: 10px; padding: 18px 22px; margin: 1.3rem 0;">
-        <div style="flex-shrink: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); background: var(--bg-3); padding: 6px 14px; border-radius: 20px; white-space: nowrap;">Cross-Entropy</div>
-        <div style="font-size: 13.5px; color: var(--text-2); line-height: 1.75;">
-          <p style="margin: 0 0 0.75em;">Cross-entropy measures how far a predicted probability is from the correct answer, and it is one of the most common loss functions in machine learning, used everywhere from image classification to next-token prediction in LLMs. If the model assigns high probability to the correct class, the loss is small; if it assigns low probability, the loss is large, and it grows sharply as the prediction gets more confidently wrong.</p>
-          <p style="margin: 0;">In segmentation, this same idea is applied per pixel: each pixel is a small classification problem, "is this pixel part of the object or not". This is also the exact same loss used for language modelling, just applied to predicting the next word instead of a pixel's class, which is why the same term shows up both in <code>L<sub>seg</sub></code> here and in the language modelling loss described above.</p>
+      <div class="info-card-grid">
+        <div class="info-card">
+          <div class="info-card-label">Cross-Entropy</div>
+          <div class="info-card-body">
+            Measures how far a predicted probability is from the correct answer, one of the most common loss functions in machine learning. In segmentation, this is applied per pixel: each pixel is a small classification problem, "is this pixel part of the object or not". It is stable, but most pixels in any image are background, so a model could get a deceptively low loss just by predicting "background" everywhere. This is also the same loss used for language modelling, just applied to predicting the next word instead of a pixel's class, which is why the same term appears both in <code>L<sub>seg</sub></code> here and in the language modelling loss described above.
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">DICE Loss</div>
+          <div class="info-card-body">
+            Built from the DICE coefficient, a measure of overlap between two regions, similar to IoU: highest when the predicted and ground-truth masks line up perfectly, lowest when they do not overlap at all. Because it judges the two regions as a whole rather than pixel by pixel, it does not care how many background pixels surround the object, only how well the foreground regions match. This makes it far less sensitive to class imbalance than cross-entropy.
+          </div>
         </div>
       </div>
 
-      <div style="display: flex; align-items: flex-start; gap: 20px; background: var(--bg); border: 1.3px solid var(--accent-2); border-radius: 10px; padding: 18px 22px; margin: 1.3rem 0;">
-        <div style="flex-shrink: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); background: var(--bg-3); padding: 6px 14px; border-radius: 20px; white-space: nowrap;">DICE Loss</div>
-        <div style="font-size: 13.5px; color: var(--text-2); line-height: 1.75;">
-          <p style="margin: 0 0 0.75em;">DICE loss is built from the DICE coefficient, a measure of overlap between two regions that behaves similarly to IoU: it is highest when the predicted mask and the ground-truth mask line up perfectly, and lowest when they do not overlap at all. Because it looks at the two regions as a whole rather than judging each pixel independently, it does not care how many background pixels surround the object, only how well the foreground regions match.</p>
-          <p style="margin: 0;">This makes it far less sensitive to class imbalance than cross-entropy, and is why the two are usually paired together: cross-entropy for stable, pixel-level gradients, DICE for staying focused on the object's actual shape.</p>
-        </div>
-      </div>
+      <p class="body-text">
+        Combining the two gives the model both a stable, pixel-level gradient from cross-entropy and a shape-focused, imbalance-resistant signal from DICE.
+      </p>
 
       <div class="config-grid" style="grid-template-columns: 1fr; max-width: 460px; margin-left: auto; margin-right: auto;">
         <div class="config-card">
@@ -1494,33 +1500,12 @@ layout: blank
         <span class="section-line"></span>
       </div>
 
-      <div class="stat-row">
-        <div class="stat-card">
-          <div class="stat-num pos">+18–30%</div>
-          <div class="stat-label">vs. LISA on MRSeg benchmark (multi-round)</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-num pos">+5.5%</div>
-          <div class="stat-label">cIoU on RefCOCO (single-round)</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-num pos">+4.5%</div>
-          <div class="stat-label">Acc@0.5 on RefCOCO</div>
-        </div>
-      </div>
-
       <p class="body-text">
-        The gains on single-round benchmarks are particularly notable. SegLLM does not trade off single-turn performance to support multi-turn interaction; it improves both simultaneously.
+        SegLLM is evaluated across three types of tasks, each with its own primary metric, benchmarked against LISA.
       </p>
 
-      <div class="sub-heading">
-        <span class="sub-heading-num">4.1</span>
-        <span class="sub-heading-text">Evaluation Metrics</span>
-        <span class="sub-heading-line"></span>
-      </div>
-
       <p class="body-text">
-        SegLLM is evaluated across three types of tasks, each with its own primary metric. The primary baseline for all comparisons is LISA, the previous state-of-the-art single-round reasoning segmentation model.
+        The third task, Multi-round Segmentation (MRSeg), covers four query types of increasing complexity: referring queries, hierarchical queries, interactional queries, and relational queries. As the rounds progress, the complexity of interaction and memory retention increases, leading to a natural decline in cIoU for all models, which is why this task is reported as cIoU per round rather than a single number.
       </p>
 
       <table class="metrics-table">
@@ -1551,11 +1536,30 @@ layout: blank
       </table>
 
       <p class="body-text">
-        The MRSeg benchmark covers four query types of increasing complexity: referring queries, hierarchical queries, interactional queries, and relational queries. As the rounds progress, the complexity of interaction and memory retention increases, leading to a natural decline in cIoU for all models. SegLLM consistently outperforms LISA across all rounds, with the performance gap widening in later rounds where cross-round reasoning matters most.
+        SegLLM consistently outperforms LISA across all rounds on MRSeg, with the performance gap widening in later rounds where cross-round reasoning matters most.
+      </p>
+
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-num pos">+18–30%</div>
+          <div class="stat-label">vs. LISA on MRSeg benchmark (multi-round)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num pos">+5.5%</div>
+          <div class="stat-label">cIoU on RefCOCO (single-round)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num pos">+4.5%</div>
+          <div class="stat-label">Acc@0.5 on RefCOCO</div>
+        </div>
+      </div>
+
+      <p class="body-text">
+        The gains on single-round benchmarks are particularly notable. SegLLM does not trade off single-turn performance to support multi-turn interaction; it improves both simultaneously.
       </p>
 
       <div class="sub-heading">
-        <span class="sub-heading-num">4.2</span>
+        <span class="sub-heading-num">4.1</span>
         <span class="sub-heading-text">Ablation Study</span>
         <span class="sub-heading-line"></span>
       </div>
@@ -1596,16 +1600,6 @@ layout: blank
         </tbody>
       </table>
 
-      <div class="sub-heading">
-        <span class="sub-heading-num">4.3</span>
-        <span class="sub-heading-text">Conclusions</span>
-        <span class="sub-heading-line"></span>
-      </div>
-
-      <p class="body-text">
-        SegLLM does a great job at bringing image segmentation into a multi-round conversation setting, beating existing methods by a large margin while also achieving better results on single-round tasks. The feedback architecture generalises well across both settings.
-      </p>
-
       <!-- ── Section 5 ── -->
       <div class="section-label">
         <span class="section-num">05</span>
@@ -1614,11 +1608,11 @@ layout: blank
       </div>
 
       <p class="body-text">
-        We find SegLLM to be a genuinely interesting piece of work. It solves a real and previously underexplored limitation: the inability to follow up on previously segmented objects, which significantly raises the ceiling for interactive segmentation.
+        Taken together, these results make a strong case for SegLLM: it beats existing methods by a large margin on multi-round segmentation, without giving up anything on single-round tasks. We find this to be a genuinely interesting piece of work. It solves a real and previously underexplored limitation: the inability to follow up on previously segmented objects, which significantly raises the ceiling for interactive segmentation.
       </p>
 
       <div class="opinion-block">
-        <div class="opinion-label">Four open concerns</div>
+        <div class="opinion-label">Five open concerns</div>
 
         <div class="opinion-item">
           <div class="opinion-bullet"></div>
@@ -1648,7 +1642,18 @@ layout: blank
           </div>
         </div>
 
+        <div class="opinion-item">
+          <div class="opinion-bullet"></div>
+          <div>
+            <strong>Sensitivity to positional keywords.</strong> The authors' own qualitative evaluation reports a second, related weakness: the model is highly sensitive to positional words like "left" and "right" within a single query. When the authors deliberately asked for "the person on the right" using the word "left", the model segmented the wrong person, apparently reacting to the keyword itself rather than reading the referring expression as a whole. The authors' own reading of this is that the model may be paying more attention to isolated positional words than to the meaning of the full expression.
+          </div>
+        </div>
+
       </div>
+
+      <p class="body-text">
+        Both of these problems, sensitivity to conversation order and sensitivity to positional keywords, point to the same open question: is this an internal bias picked up during training, such as relying too much on specific words or their position in the conversation, or does it show something deeper, that the model is not actually understanding the query or the spatial relationships in the image, and is instead matching surface patterns that happen to give the right answer. The paper's evaluation does not let us fully tell these two explanations apart. Either way, the practical conclusion is the same: as it currently stands, the model falls well short of the reliability that the medical scenario in our Motivation section would demand, exactly the kind of high-stakes setting this post opened with.
+      </p>
 
       <hr />
 
