@@ -670,7 +670,7 @@ layout: blank
           <div class="author-names">
             <strong>Aran Moradi</strong> &amp; <strong>Qianyu Bu</strong>
           </div>
-          <span class="read-time">~18 min read</span>
+          <span class="read-time">~22 min read</span>
         </div>
       </header>
 
@@ -1377,12 +1377,93 @@ layout: blank
       </div>
 
       <p class="body-text">
-        SegLLM is trained end-to-end on the dataset described in Section 3.1. Compared with single-round models like LISA, which need exactly one mask per training example, SegLLM has to handle multiple masks within a single multi-round conversation, which is far more expensive to train on. To keep this computationally feasible, the authors replace SAM's large ViT-H mask decoder with a smaller HIPIE-R50 decoder. This mask decoder, along with the CLIP image encoder, is kept frozen throughout training; only the LLM and the projection layer connecting it to the visual encoder are fine-tuned.
+        Before getting into the details, it is worth stating upfront exactly what training involves here: only the <strong>LLM</strong> and the <strong>projection layer</strong> are trained. Every other component, the image encoder, the mask encoder, and the mask decoder, uses a pre-trained model with its parameters kept completely frozen, as summarised in the Model Components table in Section 2.1. This is why the training process described below is entirely about teaching the LLM to reason correctly and to emit the right tokens at the right time, rather than about learning to see or to draw masks from scratch.
       </p>
 
       <p class="body-text">
-        The training follows a two-objective setup. A <strong>language modelling loss</strong>, the standard cross-entropy loss used to train any autoregressive LLM, supervises the text generation output. This is also what teaches the model when to emit the <code>[REF]</code> and <code>[SEG]</code> tokens in the first place, as discussed in Sections 2.1 and 2.3. A <strong>segmentation loss</strong>, combining cross-entropy and DICE loss, supervises the mask predictions. As discussed in Section 2.3, this segmentation loss is applied separately to both decoder queries: once for the reference mask grounded by <code>[REF][PAD]</code>, and once for the target mask produced by <code>[REF][SEG]</code>. Both objectives are optimised jointly, so the model learns to balance conversational fluency with pixel-level segmentation accuracy across all rounds simultaneously.
+        Before looking at how SegLLM trains its two decoder queries, it helps to see how the simpler, single-token case works in LISA, since SegLLM's training builds directly on top of it. LISA trains the LLM on templated question-answer pairs where <code>[SEG]</code> is simply part of the target sentence, for example:
       </p>
+
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--text-2); background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 1.3rem 0; line-height: 1.9;">
+        USER: &lt;IMAGE&gt; Can you segment the {class name} in this image?<br>
+        ASSISTANT: It is <span style="color: var(--accent); font-weight: 600;">[SEG]</span>.
+      </div>
+
+      <div class="info-card-grid" style="grid-template-columns: 1fr;">
+        <div class="info-card" style="background: #f5ecd9; border-color: var(--accent-2);">
+          <div class="info-card-label">Why exactly "It is [SEG]"?</div>
+          <div class="info-card-body">
+            <p style="margin: 0 0 0.9em;">The LISA paper does not explain why it settled on this specific template, but we suspect it comes down to engineering convenience. A short, highly regular template like this guarantees that <code>[SEG]</code> always appears in a predictable position in the output, which makes both the training data and the extraction of its hidden state much simpler to implement.</p>
+            <p style="margin: 0 0 0.9em;">There is also a semantic argument for it: if the LLM outputs "it is" followed by a single token, that token is, grammatically, whatever "it" refers to, which is exactly the content we want the query vector to carry.</p>
+            <p style="margin: 0;">Allowing free-form responses, or a more diverse set of templates, would likely require extra processing to locate <code>[SEG]</code> and to keep its meaning well defined, so we read this as a deliberate simplification, a trick, rather than a principled design choice. This reading lines up with how the field later reacted to it: <strong>LISA++</strong> [17] explicitly criticises this template as too rigid and unnatural, arguing it cannot adapt to the diversity of responses needed in real applications.</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="body-text">
+        Because <code>[SEG]</code> is treated as an ordinary word in the answer, learning to place it correctly requires nothing beyond the standard autoregressive cross-entropy loss already used to train any LLM: the model is simply taught to predict the correct next word at every position, and one of those words happens to be <code>[SEG]</code>. No separate classifier or rule decides when to segment; the language modelling objective already covers it, exactly as we noted in Section 2.1.
+      </p>
+
+      <p class="body-text">
+        Once the model has learned to emit <code>[SEG]</code>, the next question is how that single token turns into an actual mask. This is the "embedding-as-mask" idea introduced in Section 1.4: the LLM's last hidden layer computes a vector at the position of the <code>[SEG]</code> token, and that vector, not the word itself, is what carries the segmentation request forward.
+      </p>
+
+      <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 1.3rem 0 0.4rem; padding: 18px; background: var(--bg-2); border-radius: 10px; border: 1px solid var(--border);">
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-2); background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; padding: 6px 12px;">[SEG] token emitted</span>
+        <span style="color: var(--text-4); font-size: 13px;">→</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-2); background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; padding: 6px 12px;">extract its last-layer hidden state</span>
+        <span style="color: var(--text-4); font-size: 13px;">→</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-2); background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; padding: 6px 12px;">MLP projection</span>
+        <span style="color: var(--text-4); font-size: 13px;">→</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-2); background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; padding: 6px 12px;">combined with image features in mask decoder</span>
+        <span style="color: var(--accent-2); font-size: 13px;">→</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 600; color: var(--accent); background: var(--bg-3); border: 1.3px solid var(--accent); border-radius: 6px; padding: 6px 12px;">Predicted Mask</span>
+      </div>
+
+      <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
+        Figure 2e: How a single <code>[SEG]</code> token is turned into a mask (LISA's "embedding-as-mask" mechanism).
+      </p>
+
+      <p class="body-text">
+        SegLLM is trained end-to-end on the dataset described in Section 3.1, using this same mechanism for both <code>[REF]</code> and <code>[SEG]</code>. Compared with single-round models like LISA, which need exactly one mask per training example, SegLLM has to handle multiple masks within a single multi-round conversation, which is far more expensive to train on. To keep this computationally feasible, the authors replace SAM's large ViT-H mask decoder with a smaller HIPIE-R50 decoder. This mask decoder, along with the CLIP image encoder, is kept frozen throughout training; only the LLM and the projection layer connecting it to the visual encoder are fine-tuned.
+      </p>
+
+      <p class="body-text">
+        One more training detail worth knowing: at training time, the ground-truth mask and box embeddings are inserted directly after each <code>[SEG]</code> token, rather than the model's own predictions. This is called <strong>teacher forcing</strong>, and it is standard practice for training sequence models: it stops small early mistakes from throwing off everything that follows, so the model always learns from a clean, correct history. At inference time, no ground truth is available, so the model instead feeds its own previous outputs back in, exactly as shown in Figure 0c.
+      </p>
+
+      <p class="body-text">
+        The training follows a two-objective setup. The <strong>language modelling loss</strong> is the same autoregressive cross-entropy loss just described for <code>[SEG]</code>, extended to also cover <code>[REF]</code>. The <strong>segmentation loss</strong> is where SegLLM's two-query design from Section 2.3 becomes a concrete formula:
+      </p>
+
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-1); background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin: 1.3rem 0; text-align: center; line-height: 2.1;">
+        L<sub>mask</sub> = L<sub>seg</sub>( [REF],[PAD] , M<sub>ref</sub> ) + L<sub>seg</sub>( [REF],[SEG] , M<sub>tgt</sub> )<br>
+        <span style="font-size: 12px; color: var(--text-3);">where&nbsp; L<sub>seg</sub> = L<sub>ce</sub> + λ·L<sub>DICE</sub>&nbsp; &nbsp;(λ = 1)</span>
+      </div>
+
+      <p class="body-text">
+        Two things about this formula are worth unpacking. First, notice it is a <em>sum of two separate terms</em>, one for the reference mask <code>M<sub>ref</sub></code> and one for the target mask <code>M<sub>tgt</sub></code>. This is exactly the design choice from Section 2.3 written out as maths: grounding the reference object is never left as a side effect of getting the target right, it has its own loss term and is supervised directly.
+      </p>
+
+      <p class="body-text">
+        Second, each of those two terms is itself a combination of cross-entropy (<code>L<sub>ce</sub></code>) and DICE loss (<code>L<sub>DICE</sub></code>), a standard pairing in segmentation, since the two catch different kinds of mistakes: one is stable but easily fooled by class imbalance, the other is robust to imbalance but noisier on its own. Combining them gives the model both a stable, pixel-level gradient and a signal that keeps it focused on the actual object.
+      </p>
+
+      <div style="display: flex; align-items: flex-start; gap: 20px; background: var(--bg); border: 1.3px solid var(--accent-2); border-radius: 10px; padding: 18px 22px; margin: 1.3rem 0;">
+        <div style="flex-shrink: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); background: var(--bg-3); padding: 6px 14px; border-radius: 20px; white-space: nowrap;">Cross-Entropy</div>
+        <div style="font-size: 13.5px; color: var(--text-2); line-height: 1.75;">
+          <p style="margin: 0 0 0.75em;">Cross-entropy measures how far a predicted probability is from the correct answer, and it is one of the most common loss functions in machine learning, used everywhere from image classification to next-token prediction in LLMs. If the model assigns high probability to the correct class, the loss is small; if it assigns low probability, the loss is large, and it grows sharply as the prediction gets more confidently wrong.</p>
+          <p style="margin: 0;">In segmentation, this same idea is applied per pixel: each pixel is a small classification problem, "is this pixel part of the object or not". This is also the exact same loss used for language modelling, just applied to predicting the next word instead of a pixel's class, which is why the same term shows up both in <code>L<sub>seg</sub></code> here and in the language modelling loss described above.</p>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: flex-start; gap: 20px; background: var(--bg); border: 1.3px solid var(--accent-2); border-radius: 10px; padding: 18px 22px; margin: 1.3rem 0;">
+        <div style="flex-shrink: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); background: var(--bg-3); padding: 6px 14px; border-radius: 20px; white-space: nowrap;">DICE Loss</div>
+        <div style="font-size: 13.5px; color: var(--text-2); line-height: 1.75;">
+          <p style="margin: 0 0 0.75em;">DICE loss is built from the DICE coefficient, a measure of overlap between two regions that behaves similarly to IoU: it is highest when the predicted mask and the ground-truth mask line up perfectly, and lowest when they do not overlap at all. Because it looks at the two regions as a whole rather than judging each pixel independently, it does not care how many background pixels surround the object, only how well the foreground regions match.</p>
+          <p style="margin: 0;">This makes it far less sensitive to class imbalance than cross-entropy, and is why the two are usually paired together: cross-entropy for stable, pixel-level gradients, DICE for staying focused on the object's actual shape.</p>
+        </div>
+      </div>
 
       <div class="config-grid" style="grid-template-columns: 1fr; max-width: 460px; margin-left: auto; margin-right: auto;">
         <div class="config-card">
@@ -1595,6 +1676,7 @@ layout: blank
         <li>Lai, X., Tian, Z., Chen, Y., Li, Y., Yuan, Y., Liu, S., &amp; Jia, J. (2023). LISA: Reasoning Segmentation via Large Language Model. <em>CVPR 2024</em>. arXiv:2308.00692.</li>
         <li>Liu, H., Li, C., Wu, Q., &amp; Lee, Y. J. (2023). Visual Instruction Tuning (LLaVA). <em>NeurIPS 2023</em>. arXiv:2304.08485.</li>
         <li>Radford, A., Kim, J. W., Hallacy, C., Ramesh, A., Goh, G., Agarwal, S., et al. (2021). Learning Transferable Visual Models From Natural Language Supervision (CLIP). <em>ICML 2021</em>. arXiv:2103.00020.</li>
+        <li>Yang, S., Qu, T., Lai, X., Tian, Z., Peng, B., Liu, S., &amp; Jia, J. (2023). LISA++: An Improved Baseline for Reasoning Segmentation with Large Language Model. arXiv:2312.17240.</li>
       </ol>
 
       <footer class="article-footer">
