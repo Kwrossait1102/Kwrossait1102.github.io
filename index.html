@@ -762,27 +762,6 @@ layout: blank
         These methods are fast, require no training data, and are easy to reason about. However, they all rely on hand-crafted assumptions about what makes pixels belong together, such as a fixed brightness cutoff, a fixed notion of "sharp change", or a fixed similarity measure. Real-world images often break these assumptions: shadows and uneven lighting confuse thresholding, textured backgrounds create false edges, and objects that share a similar colour to their surroundings get grouped together incorrectly by clustering. None of these methods have any real concept of an "object"; they only look at pixel statistics, not semantics.
       </p>
 
-      <div class="info-card-grid">
-        <div class="info-card">
-          <div class="info-card-label">What is the Canny Operator?</div>
-          <div class="info-card-body">
-            The Canny edge detector first smooths the image to reduce noise, then computes the intensity gradient at every pixel to find where brightness changes fastest. It keeps only the pixels that are local maxima along the gradient direction (thinning wide blurry edges down to a single crisp line), and finally uses two thresholds to decide which edges are strong enough to keep, linking weaker edges to nearby strong ones so faint but connected boundaries aren't discarded outright.
-          </div>
-          <div class="info-card-cite">Canny, TPAMI 1986 [5]</div>
-        </div>
-        <div class="info-card">
-          <div class="info-card-label">What is the Structure Tensor?</div>
-          <div class="info-card-body">
-            For each pixel, we look at a small neighbourhood and compute the image gradient at every point inside it. Instead of just measuring gradient strength like Canny does, the structure tensor collects these gradients into a small 2×2 matrix. This matrix has the same form as a covariance matrix, except it is built from gradient vectors instead of data samples. Its eigenvalues tell us what kind of region we are looking at: if both are small, the area is flat; if one is large and one is small, we are looking at an edge; and if both are large, we are looking at a corner. This is the mechanism behind the Harris corner detector, and it captures more information than a simple, single-pixel gradient check.
-          </div>
-          <div class="info-card-cite">Harris &amp; Stephens, Alvey 1988 [7]</div>
-        </div>
-      </div>
-
-      <p class="body-text">
-        If this kind of classical, hand-designed image processing interests you and you would like to go deeper, our university offers a dedicated <strong>Imaging Science</strong> course at Uni Stuttgart in the summer semester. It is well worth considering as an elective if this section caught your interest.
-      </p>
-
       <div class="sub-heading">
         <span class="sub-heading-num">1.3</span>
         <span class="sub-heading-text">Deep Learning-based Image Segmentation</span>
@@ -797,25 +776,25 @@ layout: blank
         <div class="pipeline-step">
           <span class="pipeline-step-num">FCN</span>
           <div class="pipeline-step-content">
-            <strong>Fully Convolutional Networks</strong> [8] took standard image-classification networks (which end in a single "this image is a cat" prediction) and replaced their final layers so that every pixel gets its own prediction instead. This made pixel-wise, end-to-end labelling possible for the first time and is the basis of modern <em>semantic</em> segmentation. Its main limitation: it labels categories, but has no notion of separate object instances.
+            <strong>Fully Convolutional Networks</strong> [7] took standard image-classification networks (which end in a single "this image is a cat" prediction) and replaced their final layers so that every pixel gets its own prediction instead. This made pixel-wise, end-to-end labelling possible for the first time and is the basis of modern <em>semantic</em> segmentation. Its main limitation: it labels categories, but has no notion of separate object instances.
           </div>
         </div>
         <div class="pipeline-step">
           <span class="pipeline-step-num">Mask R-CNN</span>
           <div class="pipeline-step-content">
-            <strong>Mask R-CNN</strong> [9] addressed exactly that gap. It first detects individual objects with bounding boxes, like a detector would, and then predicts a pixel mask inside each box. This is what gives it the ability to separate person A from person B, achieving true <em>instance</em> segmentation. The trade-off is that it depends on a two-stage pipeline (detecting boxes, then segmenting inside them), which adds complexity and can allow detection mistakes to carry over into the mask.
+            <strong>Mask R-CNN</strong> [8] addressed exactly that gap. It first detects individual objects with bounding boxes, like a detector would, and then predicts a pixel mask inside each box. This is what gives it the ability to separate person A from person B, achieving true <em>instance</em> segmentation. The trade-off is that it depends on a two-stage pipeline (detecting boxes, then segmenting inside them), which adds complexity and can allow detection mistakes to carry over into the mask.
           </div>
         </div>
         <div class="pipeline-step">
           <span class="pipeline-step-num">MaskFormer</span>
           <div class="pipeline-step-content">
-            <strong>MaskFormer</strong> [10] simplified this by borrowing the transformer's "query" mechanism: instead of first drawing boxes, the model learns a fixed set of queries that each directly predict one mask and its category. This unifies semantic, instance, and panoptic segmentation under one framework, removing the need for separate specialised pipelines.
+            <strong>MaskFormer</strong> [9] simplified this by borrowing the transformer's "query" mechanism: instead of first drawing boxes, the model learns a fixed set of queries that each directly predict one mask and its category. This unifies semantic, instance, and panoptic segmentation under one framework, removing the need for separate specialised pipelines.
           </div>
         </div>
         <div class="pipeline-step">
           <span class="pipeline-step-num">SAM</span>
           <div class="pipeline-step-content">
-            <strong>SAM</strong> (Segment Anything Model) [11] marked a further shift towards generality. Trained on over 1 billion masks, SAM can segment almost any object in almost any image without needing to be retrained, simply by giving it a point, a box, or a rough scribble as a prompt. This made segmentation far more flexible, but the prompt itself still has to be a simple visual cue. SAM has no way to understand a prompt like "the person <em>talking on the phone</em>", since that requires reading and reasoning about language rather than just clicking a point.
+            <strong>SAM</strong> (Segment Anything Model) [10] marked a further shift towards generality. Trained on over 1 billion masks, SAM can segment almost any object in almost any image without needing to be retrained, simply by giving it a point, a box, or a rough scribble as a prompt. This made segmentation far more flexible, but the prompt itself still has to be a simple visual cue. SAM has no way to understand a prompt like "the person <em>talking on the phone</em>", since that requires reading and reasoning about language rather than just clicking a point.
           </div>
         </div>
       </div>
@@ -886,7 +865,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        Reasoning in Large Language Models refers to the ability to solve complex problems through multi-step inference, drawing on learned knowledge to chain intermediate conclusions towards a final answer [12]. Unlike simple pattern matching, LLM reasoning involves understanding context, resolving ambiguity, and following implicit logical structure. This capability has been demonstrated across diverse tasks including mathematical problem solving, commonsense inference, and question answering [13].
+        Reasoning in Large Language Models refers to the ability to solve complex problems through multi-step inference, drawing on learned knowledge to chain intermediate conclusions towards a final answer [11]. Unlike simple pattern matching, LLM reasoning involves understanding context, resolving ambiguity, and following implicit logical structure. This capability has been demonstrated across diverse tasks including mathematical problem solving, commonsense inference, and question answering [12].
       </p>
 
       <p class="body-text">
@@ -922,7 +901,7 @@ layout: blank
       </p>
 
       <p class="body-text">
-        The two reasoning queries above are instances of a task called <strong>reasoning segmentation</strong>, in contrast to the label-based query. More formally: given an implicit, complex natural language query, the model must reason about image content to understand relationships, context, and intent before producing a segmentation mask [14]. As the examples show, this goes well beyond simply matching a text label to a visual region. Models such as <strong>LLaVA</strong> [15] showed that aligning visual encoders with LLMs through instruction tuning enables rich cross-modal reasoning. Building on this, <strong>LISA</strong> [14] operationalised reasoning segmentation by introducing a learned <code>[SEG]</code> token as a clean interface between language-level reasoning and pixel-level mask output, without any handcrafted heuristics for when or what to segment.
+        The two reasoning queries above are instances of a task called <strong>reasoning segmentation</strong>, in contrast to the label-based query. More formally: given an implicit, complex natural language query, the model must reason about image content to understand relationships, context, and intent before producing a segmentation mask [13]. As the examples show, this goes well beyond simply matching a text label to a visual region. Models such as <strong>LLaVA</strong> [14] showed that aligning visual encoders with LLMs through instruction tuning enables rich cross-modal reasoning. Building on this, <strong>LISA</strong> [13] operationalised reasoning segmentation by introducing a learned <code>[SEG]</code> token as a clean interface between language-level reasoning and pixel-level mask output, without any handcrafted heuristics for when or what to segment.
       </p>
 
       <div class="info-card-grid" style="grid-template-columns: 1fr;">
@@ -931,7 +910,7 @@ layout: blank
           <div class="info-card-body">
             <code>[SEG]</code> is a single new token added to the LLM's vocabulary. Its job is not to carry meaning on its own; it simply signals to the rest of the system that a segmentation mask needs to be produced here, telling the downstream mask decoder when to act. What matters more than the token itself is its <strong>hidden state</strong>: the vector the LLM computes internally at the position of that token, taken from the model's last hidden layer. Because the LLM has just reasoned through the entire query and image together, this vector ends up containing exactly the semantic information the mask decoder needs, including what the task is, which object is being referred to, and how that object relates to others in the scene. Since this hidden state is what actually gets passed forward and compared against the image features, it is often referred to as the <strong>query vector</strong>.
           </div>
-          <div class="info-card-cite">Lai et al., CVPR 2024 [14]</div>
+          <div class="info-card-cite">Lai et al., CVPR 2024 [13]</div>
         </div>
       </div>
 
@@ -1177,14 +1156,14 @@ layout: blank
           <div class="info-card-body">
             CLIP (Contrastive Language-Image Pretraining) is a model developed by OpenAI that learns to connect images and text by training on hundreds of millions of image-caption pairs. Instead of learning to classify images into fixed categories, CLIP learns a shared embedding space where similar images and texts are placed close together. This makes it very good at understanding visual content through natural language, even for concepts it has never seen labelled before.
           </div>
-          <div class="info-card-cite">Radford et al., ICML 2021 [16]</div>
+          <div class="info-card-cite">Radford et al., ICML 2021 [15]</div>
         </div>
         <div class="info-card">
           <div class="info-card-label">What is LLaVA?</div>
           <div class="info-card-body">
             LLaVA (Large Language and Vision Assistant) is a multimodal model that connects a visual encoder with a large language model through a simple projection layer. It is fine-tuned on visual instruction data, teaching the model to answer questions and follow instructions about images. LLaVA serves as the backbone LLM in SegLLM, providing the language reasoning capability that drives the multi-round conversation.
           </div>
-          <div class="info-card-cite">Liu et al., NeurIPS 2023 [15]</div>
+          <div class="info-card-cite">Liu et al., NeurIPS 2023 [14]</div>
         </div>
       </div>
 
@@ -1400,7 +1379,7 @@ layout: blank
           <div class="info-card-body">
             RefCOCO is a referring expression dataset built on top of MS-COCO images. It was collected using a two-player game called ReferItGame: one player is shown an object highlighted in an image and writes a short description of it, while a second player has to pick out the correct object from that description alone, with no other cues. This produces natural, human-written referring expressions rather than templated ones. The dataset covers around 142,000 expressions for roughly 50,000 objects across about 20,000 images, split so that one test set is dominated by images containing people and the other by everything else. Since players were free to describe objects however they liked, including by location, RefCOCO expressions frequently use spatial words such as "left" and "right", which is also part of why it is a natural fit for testing the kind of positional-keyword sensitivity discussed in Section 5.
           </div>
-          <div class="info-card-cite">Yu et al., ECCV 2016 [25]</div>
+          <div class="info-card-cite">Yu et al., ECCV 2016 [24]</div>
         </div>
       </div>
 
@@ -1428,7 +1407,7 @@ layout: blank
             </div>
             <p style="margin: 0 0 0.9em;">LISA trains the LLM on templated question-answer pairs like this one, where <code>[SEG]</code> is simply part of the target sentence. The paper does not explain why it settled on this specific wording, but we suspect it comes down to engineering convenience. A short, highly regular template like this guarantees that <code>[SEG]</code> always appears in a predictable position in the output, which makes both the training data and the extraction of its hidden state much simpler to implement.</p>
             <p style="margin: 0 0 0.9em;">There is also a semantic argument for it: if the LLM outputs "it is" followed by a single token, that token is, grammatically, whatever "it" refers to, which is exactly the content we want the query vector to carry.</p>
-            <p style="margin: 0;">Allowing free-form responses, or a more diverse set of templates, would likely require extra processing to locate <code>[SEG]</code> and to keep its meaning well defined, so we read this as a deliberate simplification, a trick, rather than a principled design choice. This reading lines up with how the field later reacted to it: <strong>LISA++</strong> [17] explicitly criticises this template as too rigid and unnatural, arguing it cannot adapt to the diversity of responses needed in real applications.</p>
+            <p style="margin: 0;">Allowing free-form responses, or a more diverse set of templates, would likely require extra processing to locate <code>[SEG]</code> and to keep its meaning well defined, so we read this as a deliberate simplification, a trick, rather than a principled design choice. This reading lines up with how the field later reacted to it: <strong>LISA++</strong> [16] explicitly criticises this template as too rigid and unnatural, arguing it cannot adapt to the diversity of responses needed in real applications.</p>
           </div>
         </div>
       </div>
@@ -1566,7 +1545,7 @@ layout: blank
       </table>
 
       <p class="body-text">
-        SegLLM consistently outperforms LISA across all rounds on MRSeg, with the performance gap widening in later rounds where cross-round reasoning matters most.
+        SegLLM consistently outperforms both LISA and GLaMM, another multi-round baseline, across all rounds on MRSeg, with the gap widening in later rounds where cross-round reasoning matters most. On single-round RefCOCO, the improvement shows up in absolute numbers too: SegLLM reaches 81.5 cIoU on the testA split, against LISA's 76.5.
       </p>
 
       <div class="stat-row">
@@ -1585,7 +1564,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        The gains on single-round benchmarks are particularly notable. SegLLM does not trade off single-turn performance to support multi-turn interaction; it improves both simultaneously.
+        The gains on single-round benchmarks are particularly notable. SegLLM does not trade off single-turn performance to support multi-turn interaction; it improves both simultaneously. It even beats SESAME, a model built specifically for single-round robustness, by 2.3% cIoU when tested on SESAME's own question templates rather than SegLLM's.
       </p>
 
       <div class="sub-heading">
@@ -1595,7 +1574,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        The ablation study isolates the contribution of each of SegLLM's two core modules. The results confirm that both components are necessary for strong multi-round performance.
+        The ablation study isolates the contribution of each of SegLLM's two core modules, tested across three settings: single-round segmentation, standard multi-round MRSeg, and a harder MRSeg subset. The results confirm that both components are necessary for strong performance, especially in the harder multi-round setting.
       </p>
 
       <table class="ablation-table">
@@ -1655,7 +1634,7 @@ layout: blank
         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-2);">
           <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px;">Possible direction</div>
           <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">Part of the problem is that SegLLM never explains itself. The LLM goes straight from the query to the <code>[SEG]</code> token, with no explicit reasoning step in between, so when an error does occur, there is no trace showing which object the model thought it was looking at, or why. Many other reasoning tasks now follow a different pipeline: the model first states its reasoning for a judgment, then produces the judgment itself, sometimes with a confidence score attached. Applying this here would mean having the LLM state, in each round, which object it believes a query refers to and why, before emitting <code>[SEG]</code>. This alone would not stop errors from happening, but it would make them visible, rather than hidden inside a single forward pass into a mask.</p>
-          <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">Once that reasoning trace exists, a strategy similar to Step-DPO [21] becomes possible. Step-DPO improves long-chain mathematical reasoning by locating the specific step where a reasoning chain goes wrong, using a strong LLM to identify the error and generate a corrected version of that step, and then training the model on this corrected step directly. Applied to SegLLM, each conversational round could be treated the way Step-DPO treats a reasoning step: after generating a batch of multi-round conversations, a strong LLM could review the reasoning trace at each round, flag the round where the reference to a previous object first goes wrong, and produce a corrected version. Training on this kind of round-level correction data could directly target the accumulation problem described above, rather than only supervising the final mask in each round.</p>
+          <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">Once that reasoning trace exists, a strategy similar to Step-DPO [20] becomes possible. Step-DPO improves long-chain mathematical reasoning by locating the specific step where a reasoning chain goes wrong, using a strong LLM to identify the error and generate a corrected version of that step, and then training the model on this corrected step directly. Applied to SegLLM, each conversational round could be treated the way Step-DPO treats a reasoning step: after generating a batch of multi-round conversations, a strong LLM could review the reasoning trace at each round, flag the round where the reference to a previous object first goes wrong, and produce a corrected version. Training on this kind of round-level correction data could directly target the accumulation problem described above, rather than only supervising the final mask in each round.</p>
         </div>
       </div>
 
@@ -1669,7 +1648,7 @@ layout: blank
         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-2);">
           <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px;">Possible direction</div>
           <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">This looks like the same underlying problem as positional-keyword sensitivity: the model does not seem to fully understand the query, or in this case the conversation as a whole, independently of the specific order it was presented in. The two failures differ in what is being varied, though, so the fix should differ too. Paraphrasing changes the wording of a single query, while here it is the sequence of rounds that changes; simply rewording queries would not teach the model anything about ordering.</p>
-          <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">A more direct option is to build a dataset of reordered conversations: taking existing multi-round examples and generating several permutations of the round order, then training the model to give the same answer regardless of which permutation it sees. This kind of order-permutation augmentation has been shown to help in other settings. Xiang et al. [23] address order sensitivity of in-context examples in causal language models directly, using multiple permutations together with a consistency loss so the model's output no longer depends on which position an example appears in. Zhang et al. [24] take a similar approach for positional bias more broadly, constructing augmented training data in which every candidate appears at every possible position. Neither paper works on multi-round segmentation specifically, but both support generating a permuted-order dataset as a reasonable way to reduce SegLLM's sensitivity to conversation ordering.</p>
+          <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">A more direct option is to build a dataset of reordered conversations: taking existing multi-round examples and generating several permutations of the round order, then training the model to give the same answer regardless of which permutation it sees. This kind of order-permutation augmentation has been shown to help in other settings. Xiang et al. [22] address order sensitivity of in-context examples in causal language models directly, using multiple permutations together with a consistency loss so the model's output no longer depends on which position an example appears in. Zhang et al. [23] take a similar approach for positional bias more broadly, constructing augmented training data in which every candidate appears at every possible position. Neither paper works on multi-round segmentation specifically, but both support generating a permuted-order dataset as a reasonable way to reduce SegLLM's sensitivity to conversation ordering.</p>
           <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">Generating every possible permutation of a conversation's rounds gets expensive quickly as the number of rounds grows, since the number of orderings grows factorially. A simpler starting point would be to just reverse the original round order for each conversation. This is a single, cheap augmentation per example rather than a full permutation set, and it still gives the model a meaningfully different ordering to learn from, which should be enough to test whether even this minimal amount of order variation improves consistency before committing to the more expensive full-permutation approach.</p>
         </div>
       </div>
@@ -1684,7 +1663,7 @@ layout: blank
         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-2);">
           <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px;">Possible direction</div>
           <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">This growth is real: with two tokens per mask, nine rounds already means eighteen tokens just for mask history, on top of everything else in the input. Some form of compression seems necessary here, not just a nice-to-have. This need shows up even outside research settings: production chat tools such as Claude include a manual compact command specifically to summarise and shrink conversation history once it grows too long, which suggests that unbounded context growth is a practical problem people already work around, not only a theoretical one.</p>
-          <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">One direction worth exploring is to make the mask encoding itself recurrent, rather than independent per round. Right now, each round's mask and box embeddings are computed only from that round's mask, then simply appended to the growing input. An alternative would be to compute each new embedding from both the current mask and a running summary of everything segmented so far, similar to how a Transformer's hidden states carry information forward from earlier tokens, or how an RNN's hidden state is updated at each step. This is close to what Video Detective [22] does for long video understanding: instead of storing a token per segment indefinitely, it recurrently aggregates and updates a small set of memory tokens as new segments arrive, so history is carried forward in a compressed form rather than accumulated in full. Similar designs already exist in the video-understanding literature, where each frame is compressed down to a small, fixed number of tokens tied together by a memory mechanism, rather than letting the token count grow with every frame. Applying the same idea to SegLLM's mask history could keep the input size closer to constant, or at least growing more slowly, even as the number of rounds goes well beyond what the paper currently tests.</p>
+          <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">One direction worth exploring is to make the mask encoding itself recurrent, rather than independent per round. Right now, each round's mask and box embeddings are computed only from that round's mask, then simply appended to the growing input. An alternative would be to compute each new embedding from both the current mask and a running summary of everything segmented so far, similar to how a Transformer's hidden states carry information forward from earlier tokens, or how an RNN's hidden state is updated at each step. This is close to what Video Detective [21] does for long video understanding: instead of storing a token per segment indefinitely, it recurrently aggregates and updates a small set of memory tokens as new segments arrive, so history is carried forward in a compressed form rather than accumulated in full. Similar designs already exist in the video-understanding literature, where each frame is compressed down to a small, fixed number of tokens tied together by a memory mechanism, rather than letting the token count grow with every frame. Applying the same idea to SegLLM's mask history could keep the input size closer to constant, or at least growing more slowly, even as the number of rounds goes well beyond what the paper currently tests.</p>
         </div>
       </div>
 
@@ -1707,7 +1686,7 @@ layout: blank
           <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px;">Possible direction</div>
           <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">This points, at least in part, to the model not fully understanding how positional information and semantic content are meant to combine within a query. One direction worth exploring is targeted paraphrase augmentation: generating two or three paraphrased versions of existing queries, for example with a strong model such as GPT-5, focused specifically on the positional keyword rather than the whole sentence. Given the trap construction described above, this should go beyond simple synonym swaps such as rewording "on the right" as "to the right of". It should also include queries with two positional words in the same sentence, one negated or contrasted against the other, so the model is trained to resolve the full structure rather than reacting to whichever keyword appears first.</p>
           <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">It is worth being precise about what existing results do and do not support. The paper's own "diverse query templates" ablation, which showed a +9.6% improvement on RefCOCO, tested variation in the overall phrasing and structure of queries, not variation targeted at positional keywords specifically. This is evidence that broad template diversity helps generalisation in general, but it does not show whether positional-keyword paraphrasing would fix this particular failure. Testing that would need a dedicated follow-up experiment, holding the rest of the query fixed while varying only how the positional relation is expressed, and evaluating on cases built to catch keyword-based shortcuts like the one above.</p>
-          <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">This general direction is supported by work outside this paper. SPARTA [18] studies the same kind of vulnerability directly in reasoning segmentation: grammatically correct paraphrases that preserve a query's meaning can still cause segmentation performance to collapse, suggesting that models in this space tend to rely on surface phrasing rather than robustly understanding the query. SpaRE [19] shows that training on more diverse spatial descriptions leads vision-language models toward a more robust understanding of spatial concepts, rather than models that only work for the specific phrasings seen in training. Hoehing et al. [20] tackle left-right confusion directly, showing that carefully constructed contrastive sentence pairs can improve left-right understanding in CLIP-style models. None of these three papers test positional-keyword paraphrasing within reasoning segmentation specifically, but together they support the direction proposed here. What surprises us is that Hoehing et al. was published in late 2023, well before SegLLM in 2024, so a targeted fix for exactly this kind of left-right confusion was already available in the literature. We are not sure why it was not adopted here. It is possible that training on this scale, across multiple rounds and multiple masks per conversation, already stretched the available compute, leaving little room for an additional round of targeted augmentation.</p>
+          <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">This general direction is supported by work outside this paper. SPARTA [17] studies the same kind of vulnerability directly in reasoning segmentation: grammatically correct paraphrases that preserve a query's meaning can still cause segmentation performance to collapse, suggesting that models in this space tend to rely on surface phrasing rather than robustly understanding the query. SpaRE [18] shows that training on more diverse spatial descriptions leads vision-language models toward a more robust understanding of spatial concepts, rather than models that only work for the specific phrasings seen in training. Hoehing et al. [19] tackle left-right confusion directly, showing that carefully constructed contrastive sentence pairs can improve left-right understanding in CLIP-style models. None of these three papers test positional-keyword paraphrasing within reasoning segmentation specifically, but together they support the direction proposed here. What surprises us is that Hoehing et al. was published in late 2023, well before SegLLM in 2024, so a targeted fix for exactly this kind of left-right confusion was already available in the literature. We are not sure why it was not adopted here. It is possible that training on this scale, across multiple rounds and multiple masks per conversation, already stretched the available compute, leaving little room for an additional round of targeted augmentation.</p>
         </div>
       </div>
 
@@ -1761,7 +1740,6 @@ layout: blank
         <li>Otsu, N. (1979). A Threshold Selection Method from Gray-Level Histograms. <em>IEEE Transactions on Systems, Man, and Cybernetics</em>, 9(1), 62–66.</li>
         <li>Canny, J. (1986). A Computational Approach to Edge Detection. <em>IEEE Transactions on Pattern Analysis and Machine Intelligence</em>, 8(6), 679–698.</li>
         <li>Vincent, L., &amp; Soille, P. (1991). Watersheds in Digital Spaces: An Efficient Algorithm Based on Immersion Simulations. <em>IEEE Transactions on Pattern Analysis and Machine Intelligence</em>, 13(6), 583–598.</li>
-        <li>Harris, C., &amp; Stephens, M. (1988). A Combined Corner and Edge Detector. <em>Proceedings of the Alvey Vision Conference</em>, 147–151.</li>
         <li>Long, J., Shelhamer, E., &amp; Darrell, T. (2015). Fully Convolutional Networks for Semantic Segmentation. <em>CVPR 2015</em>.</li>
         <li>He, K., Gkioxari, G., Dollár, P., &amp; Girshick, R. (2017). Mask R-CNN. <em>ICCV 2017</em>.</li>
         <li>Cheng, B., Misra, I., Schwing, A. G., Kirillov, A., &amp; Girdhar, R. (2022). Masked-Attention Mask Transformer for Universal Image Segmentation. <em>CVPR 2022</em>.</li>
