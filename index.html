@@ -690,7 +690,7 @@ layout: blank
       </p>
 
       <p class="body-text">
-        The problem is that existing tools treat each query independently. Every time a user asks a new question, they have to re-establish the full context from scratch. This is especially frustrating in medical settings, where anatomical structures are closely related. Bridging this gap, <em>giving models the ability to remember previous interactions</em>, is what this post is about.
+        The problem is that existing tools treat each query independently. Every time a user asks a new question, they have to re-establish the full context from scratch. This is especially frustrating in medical settings, where anatomical structures are closely related. Bridging this gap, <em>giving models memory of previous rounds</em>, is what this post is about.
       </p>
 
       <p class="body-text">
@@ -776,11 +776,11 @@ layout: blank
       </p>
 
       <p class="body-text">
-        <strong>MaskFormer</strong> [9] was the first to fit the different kinds of segmentation tasks into this three-part recipe, by borrowing the transformer's "query" mechanism: a fixed set of learned queries each predicts one mask and its category directly.
+        <strong>MaskFormer</strong> [4] was the first to fit the different kinds of segmentation tasks into this three-part recipe, by borrowing the transformer's "query" mechanism: a fixed set of learned queries each predicts one mask and its category directly.
       </p>
 
       <p class="body-text">
-        <strong>SAM</strong> (Segment Anything Model) [10] then pushed the same recipe to arbitrary objects: trained on over one billion masks, it can segment almost any object in almost any image given a point, box, or scribble as a prompt, without retraining.
+        <strong>SAM</strong> (Segment Anything Model) [5] then pushed the same recipe to arbitrary objects: trained on over one billion masks, it can segment almost any object in almost any image given a point, box, or scribble as a prompt, without retraining.
       </p>
 
       <div class="highlight-box">
@@ -794,7 +794,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        Large Language Models can do more than pattern-match text. They can chain intermediate steps to solve problems that require background knowledge and inference [11]. For example, they can work out the answer to a word problem, or resolve what "she" refers to in a paragraph [12]. This ability to <em>reason</em> is what makes it possible to plug an LLM into segmentation in the first place.
+        Large Language Models can do more than pattern-match text. They can chain intermediate steps to solve problems that require background knowledge and inference [6]. For example, they can work out the answer to a word problem, or resolve what "she" refers to in a paragraph [7]. This ability to <em>reason</em> is what makes it possible to plug an LLM into segmentation in the first place.
       </p>
 
       <p class="body-text">
@@ -826,11 +826,11 @@ layout: blank
       </div>
 
       <p class="body-text">
-        A model like SAM can segment "the orange" perfectly well once it is given that label, but it has no way of resolving "the food that is high in Vitamin C" into a label on its own, and no mechanism at all for reasoning about relationships between objects, as the third example requires. That resolving step, working out <em>which</em> object a description refers to before any segmentation happens, is what <strong>reasoning segmentation</strong> adds. More formally: given an implicit natural language query, the model must reason about image content to understand relationships, context, and intent before producing a mask [13].
+        A model like SAM can segment "the orange" perfectly well once it is given that label, but it has no way of resolving "the food that is high in Vitamin C" into a label on its own, and no mechanism at all for reasoning about relationships between objects, as the third example requires. That resolving step, working out <em>which</em> object a description refers to before any segmentation happens, is what <strong>reasoning segmentation</strong> adds. More formally: given an implicit natural language query, the model must reason about image content to understand relationships, context, and intent before producing a mask [8].
       </p>
 
       <p class="body-text">
-        The concrete way this is done is via <strong>LISA</strong> [13], which introduced a single learned token, <code>[SEG]</code>, as the interface between language reasoning and mask output. This is the foundation SegLLM builds on.
+        The concrete way this is done is via <strong>LISA</strong> [8], which introduced a single learned token, <code>[SEG]</code>, as the interface between language reasoning and mask output. This is the foundation SegLLM builds on.
       </p>
 
       <div class="info-card-grid" style="grid-template-columns: 1fr;">
@@ -839,7 +839,7 @@ layout: blank
           <div class="info-card-body">
             <code>[SEG]</code> is a single new token added to the LLM's vocabulary. Its job is not to carry meaning on its own; it simply signals to the rest of the system that a segmentation mask needs to be produced here, telling the downstream mask decoder when to act. What matters more than the token itself is its <strong>hidden state</strong>: the vector the LLM computes internally at the position of that token, taken from the model's last hidden layer. Because the LLM has just reasoned through the entire query and image together, this vector ends up containing exactly the semantic information the mask decoder needs, including what the task is, which object is being referred to, and how that object relates to others in the scene. Since this hidden state is what actually gets passed forward and compared against the image features, it is often referred to as the <strong>query vector</strong>.
           </div>
-          <div class="info-card-cite">Lai et al., CVPR 2024 [13]</div>
+          <div class="info-card-cite">Lai et al., CVPR 2024 [8]</div>
         </div>
       </div>
 
@@ -947,7 +947,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        Section 1.4 pinpointed exactly where the single-round architecture breaks down: once the mask decoder produces an output, that information has nowhere to go, since nothing connects it back to the LLM. SegLLM's core contribution is to add that missing connection. After each round, the mask the decoder has just produced is encoded and fed back into the LLM as part of the input for the next round, so the LLM entering round 2 has direct access to what was segmented in round 1. This turns the one-way pipeline from Figure 0b into a loop.
+        SegLLM adds the missing feedback path. After each round, the mask the decoder just produced is encoded and fed back into the LLM as part of the next round's input, so the LLM entering round 2 has direct access to what was segmented in round 1. This turns the one-way pipeline from Figure 0b into a loop.
       </p>
 
       <svg viewBox="0 0 900 460" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; margin: 1.3rem 0; font-family: 'Inter', sans-serif;">
@@ -1021,15 +1021,15 @@ layout: blank
       </svg>
 
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-top: -0.6rem; margin-bottom: 1.5rem;">
-        Figure 0c: Simplified architecture diagram. The Mask Encoder sits alongside the Image and Text Encoders and feeds the previous round's masks and information back into the LLM, closing the loop that Figure 0b was missing. (Exact encoding details are covered in Section 2.2.)
+        Figure 0c: Simplified architecture diagram. The Mask Encoder sits alongside the Image and Text Encoders and feeds the previous round's masks and information back into the LLM, closing the loop that Figure 0b was missing.
       </p>
 
       <p class="body-text">
-        SegLLM also makes a second, related change: conversation context is fed into the mask decoder itself, not just into the LLM. We leave the details of this second change for Section 2.3, once the relevant tokens have been introduced; for now, the feedback path from mask decoder back to LLM is the key idea to take away.
+        SegLLM also makes a second, related change: conversation context is fed into the mask decoder itself, not just into the LLM. For now, the feedback path from mask decoder back to LLM is the key idea to take away.
       </p>
 
       <p class="body-text">
-        In the Live Demo below, you can see that we are able to continue querying based on the segmentation result from the previous round of interaction, and perform further segmentation.
+        The demo below shows this in action: each new query builds on the mask from the previous round.
       </p>
 
       <img src="assets/live_demo.gif"
@@ -1046,33 +1046,16 @@ layout: blank
         <span class="sub-heading-line"></span>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 20px; background: var(--green-bg); border: 1px solid var(--green-border); border-radius: 10px; padding: 16px 22px; margin: 1.3rem 0;">
-        <div style="flex-shrink: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--green-text); background: rgba(255,255,255,0.5); padding: 6px 14px; border-radius: 20px; white-space: nowrap;">Recap</div>
-        <div style="font-size: 14px; color: var(--green-text); line-height: 1.7;">Our goal is to predict <strong>a segmentation mask</strong> from <strong>an image and a natural language prompt</strong>, following the architecture introduced in Section 1.3.</div>
-      </div>
-
       <p class="body-text">
-        The image is first processed by the <strong>image encoder</strong> (CLIP or DINOv2), which transforms it into patch representations and converts them into embeddings.
+        SegLLM fills in the abstract architecture from Figure 0b with concrete models, and adds one new component for the feedback loop. On the input side, the image is processed by a pre-trained <strong>image encoder</strong> (CLIP-ViT-Large), which turns it into patch embeddings. These embeddings live in a different space than the LLM's text embeddings, so a small <strong>projection layer</strong> (an MLP) maps them into the LLM's own embedding space, letting image and text be processed as tokens in one shared sequence.
       </p>
 
       <p class="body-text">
-        The text prompt does not go through a separate text encoder. As noted in Section 1.3, the LLM here is itself a multimodal VLM (LLaVA), so the text query is simply tokenized and embedded using the LLM's own embedding layer, the same way any text input to an LLM would be.
+        The text query does not go through a separate text encoder. The backbone LLM here is <strong>LLaVA-v1.5-7B</strong>, a multimodal VLM, so the text is tokenized and embedded using the LLM's own embedding layer, just like any other text input.
       </p>
 
       <p class="body-text">
-        On their own, the image encoder's visual embeddings live in a different representation space from the LLM's text embeddings, with different dimensions and statistics, so the LLM cannot directly treat them as part of its input sequence. A <strong>projection layer</strong> solves this by mapping the visual embeddings into the same space as the LLM's text embeddings, so that image and text can be processed jointly, as tokens in one shared sequence.
-      </p>
-
-      <p class="body-text">
-        The <strong>LLM</strong> then processes this combined sequence and generates an output, emitting a special token <code>[SEG]</code> whenever segmentation output is required, serving as a learned interface to the mask decoder. Deciding when to emit <code>[SEG]</code> is not a separate, rule-based step: it is simply the LLM predicting its next token as usual, trained to place <code>[SEG]</code> at the right point in the sequence. We return to how this training works in Section 3.2.
-      </p>
-
-      <p class="body-text">
-        Besides the image and text, the LLM also needs to know what has already been segmented in earlier rounds. This is the job of the <strong>Mask Encoder</strong>: it takes the mask produced in a previous round and encodes it into embeddings that are fed back into the LLM alongside the image and text embeddings, closing the loop shown earlier in Figure 0c. We describe exactly how this encoding works in Section 2.2.
-      </p>
-
-      <p class="body-text">
-        To make use of this history, the LLM uses a second special token alongside <code>[SEG]</code>, called <code>[REF]</code>. Where <code>[SEG]</code> marks the object to be segmented in the current round, <code>[REF]</code> marks an object segmented in an earlier round that the current query refers back to. Having two separate tokens lets the LLM distinguish "the new object I need to segment now" from "the earlier object this query is relating to", which is what makes cross-round references possible. We describe how <code>[REF]</code> and <code>[SEG]</code> are combined into decoder queries in Section 2.3.
+        The new component is the <strong>Mask Encoder</strong>. Its job is to take the mask produced in a previous round and turn it into embeddings that go back into the LLM alongside the current image and text. This is what closes the loop that Figure 0b was missing. To handle references across rounds, the LLM also uses a second special token alongside <code>[SEG]</code>, called <code>[REF]</code>. Where <code>[SEG]</code> marks the object to be segmented <em>now</em>, <code>[REF]</code> marks an earlier object the current query is relating back to. Having two tokens lets the LLM distinguish "the new object I need to segment" from "the earlier object this query is referring to".
       </p>
 
       <div class="info-card-grid">
@@ -1081,14 +1064,14 @@ layout: blank
           <div class="info-card-body">
             CLIP (Contrastive Language-Image Pretraining) is a model developed by OpenAI that learns to connect images and text by training on hundreds of millions of image-caption pairs. Instead of learning to classify images into fixed categories, CLIP learns a shared embedding space where similar images and texts are placed close together. This makes it very good at understanding visual content through natural language, even for concepts it has never seen labelled before.
           </div>
-          <div class="info-card-cite">Radford et al., ICML 2021 [15]</div>
+          <div class="info-card-cite">Radford et al., ICML 2021 [10]</div>
         </div>
         <div class="info-card">
           <div class="info-card-label">What is LLaVA?</div>
           <div class="info-card-body">
             LLaVA (Large Language and Vision Assistant) is a multimodal model that connects a visual encoder with a large language model through a simple projection layer. It is fine-tuned on visual instruction data, teaching the model to answer questions and follow instructions about images. LLaVA serves as the backbone LLM in SegLLM, providing the language reasoning capability that drives the multi-round conversation.
           </div>
-          <div class="info-card-cite">Liu et al., NeurIPS 2023 [14]</div>
+          <div class="info-card-cite">Liu et al., NeurIPS 2023 [9]</div>
         </div>
       </div>
 
@@ -1102,7 +1085,7 @@ layout: blank
       </p>
 
       <p class="body-text">
-        To summarise which concrete model backs each component just described:
+        The concrete backbone models for each component are:
       </p>
 
       <div class="config-grid" style="grid-template-columns: 1fr; max-width: 460px; margin-left: auto; margin-right: auto;">
@@ -1138,7 +1121,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        The Mask Encoding Module is the component introduced in Section 2.1: it turns each mask the decoder has already produced into something the LLM can read in the next round. Its input is a single mask, together with the image it came from; its output is two compact embeddings, rather than a whole new set of image patch tokens. This matters because re-encoding the full image for every previous mask would make the input sequence grow very quickly across rounds, whereas one or two extra tokens per mask does not.
+        The Mask Encoder takes one previously produced mask, together with the original image, and outputs two compact embeddings the LLM can consume, rather than a whole new set of image patch tokens. Using single embeddings matters because re-encoding the full image for every previous mask would make the input sequence grow very quickly across rounds, whereas one or two extra tokens per mask does not.
       </p>
 
       <p class="body-text">
@@ -1194,11 +1177,11 @@ layout: blank
       </div>
 
       <p class="body-text">
-        The name refers to what the mask decoder is <strong>aware of</strong>. An ordinary mask decoder, like the one in SAM or LISA, only ever sees the current query and the current image features; it has no access to what was segmented earlier in the conversation. Here, the decoder is made aware of that history directly, so it can take previous segmentation results into account when producing a new mask, rather than treating every round as a fresh, isolated request.
+        An ordinary mask decoder, like the one in SAM or LISA, only ever sees the current query and the current image features; it has no access to what was segmented earlier in the conversation. SegLLM's mask decoder is made aware of that history directly, so it can take previous segmentation results into account when producing a new mask, rather than treating every round as a fresh, isolated request.
       </p>
 
       <p class="body-text">
-        The Mask-Aware Decoding Module is the second core change SegLLM introduces, first mentioned in Section 2.1. Its job is to let the mask decoder use the conversation history directly, rather than relying only on the current LLM output. Its input is the hidden states of two special tokens the LLM emits, <code>[REF]</code> and <code>[SEG]</code>; its output is two separate masks, one that grounds a previously segmented object and one that is the actual answer to the current query.
+        Its input is the hidden states of two special tokens the LLM emits, <code>[REF]</code> and <code>[SEG]</code>; its output is two separate masks, one that grounds a previously segmented object and one that is the actual answer to the current query.
       </p>
 
       <p class="body-text">
@@ -1239,6 +1222,10 @@ layout: blank
 
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
         Figure 2d: The second query, resolving <code>[SEG]</code> in light of the grounded <code>[REF]</code>.
+      </p>
+
+      <p class="body-text">
+        Both queries run at inference time, not only during training. At each round the decoder produces both the reference mask (from <code>[REF][PAD]</code>) and the target mask (from <code>[REF][SEG]</code>); the target mask is what the user sees, while the reference mask acts as a check that <code>[REF]</code> is still grounded to the right object.
       </p>
 
       <p class="body-text">
@@ -1302,9 +1289,9 @@ layout: blank
         <div class="info-card">
           <div class="info-card-label">What is RefCOCO?</div>
           <div class="info-card-body">
-            RefCOCO is a referring expression dataset built on top of MS-COCO images. It was collected using a two-player game called ReferItGame: one player is shown an object highlighted in an image and writes a short description of it, while a second player has to pick out the correct object from that description alone, with no other cues. This produces natural, human-written referring expressions rather than templated ones. The dataset covers around 142,000 expressions for roughly 50,000 objects across about 20,000 images, split so that one test set is dominated by images containing people and the other by everything else. Since players were free to describe objects however they liked, including by location, RefCOCO expressions frequently use spatial words such as "left" and "right", which is also part of why it is a natural fit for testing the kind of positional-keyword sensitivity discussed in Section 5.
+            RefCOCO is a referring expression dataset built on top of MS-COCO images. It was collected using a two-player game called ReferItGame: one player is shown an object highlighted in an image and writes a short description of it, while a second player has to pick out the correct object from that description alone, with no other cues. This produces natural, human-written referring expressions rather than templated ones. The dataset covers around 142,000 expressions for roughly 50,000 objects across about 20,000 images, split so that one test set is dominated by images containing people and the other by everything else. Since players were free to describe objects however they liked, including by location, RefCOCO expressions frequently use spatial words such as "left" and "right".
           </div>
-          <div class="info-card-cite">Yu et al., ECCV 2016 [24]</div>
+          <div class="info-card-cite">Yu et al., ECCV 2016 [19]</div>
         </div>
       </div>
 
@@ -1315,11 +1302,11 @@ layout: blank
       </div>
 
       <p class="body-text">
-        Before getting into the details, it is worth stating upfront exactly what training involves here: only the <strong>LLM</strong> and the <strong>projection layer</strong> are trained. Every other component, the image encoder, the mask encoder, and the mask decoder, uses a pre-trained model with its parameters kept completely frozen, as summarised in the Model Components table in Section 2.1. This is why the training process described below is entirely about teaching the LLM to reason correctly and to emit the right tokens at the right time, rather than about learning to see or to draw masks from scratch.
+        Only the <strong>LLM</strong> and the <strong>projection layer</strong> are trained. Every other component (the image encoder, the mask encoder, and the mask decoder) uses a pre-trained model with its parameters kept completely frozen. The training below is therefore entirely about teaching the LLM to reason correctly and to emit the right tokens at the right time, not about learning to see or to draw masks from scratch.
       </p>
 
       <p class="body-text">
-        Before looking at how SegLLM trains its two decoder queries, it helps to see how the simpler, single-token case works in LISA, since SegLLM's training builds directly on top of it.
+        SegLLM's training extends LISA's single-token setup, so we start there:
       </p>
 
       <div class="info-card-grid" style="grid-template-columns: 1fr;">
@@ -1332,45 +1319,25 @@ layout: blank
             </div>
             <p style="margin: 0 0 0.9em;">LISA trains the LLM on templated question-answer pairs like this one, where <code>[SEG]</code> is simply part of the target sentence. The paper does not explain why it settled on this specific wording, but we suspect it comes down to engineering convenience. A short, highly regular template like this guarantees that <code>[SEG]</code> always appears in a predictable position in the output, which makes both the training data and the extraction of its hidden state much simpler to implement.</p>
             <p style="margin: 0 0 0.9em;">There is also a semantic argument for it: if the LLM outputs "it is" followed by a single token, that token is, grammatically, whatever "it" refers to, which is exactly the content we want the query vector to carry.</p>
-            <p style="margin: 0;">Allowing free-form responses, or a more diverse set of templates, would likely require extra processing to locate <code>[SEG]</code> and to keep its meaning well defined, so we read this as a deliberate simplification, a trick, rather than a principled design choice. This reading lines up with how the field later reacted to it: <strong>LISA++</strong> [16] explicitly criticises this template as too rigid and unnatural, arguing it cannot adapt to the diversity of responses needed in real applications.</p>
+            <p style="margin: 0;">Allowing free-form responses, or a more diverse set of templates, would likely require extra processing to locate <code>[SEG]</code> and to keep its meaning well defined, so we read this as a deliberate simplification, a trick, rather than a principled design choice. This reading lines up with how the field later reacted to it: <strong>LISA++</strong> [11] explicitly criticises this template as too rigid and unnatural, arguing it cannot adapt to the diversity of responses needed in real applications.</p>
           </div>
         </div>
       </div>
 
       <p class="body-text">
-        Because <code>[SEG]</code> is treated as an ordinary word in the answer, learning to place it correctly requires nothing beyond the standard autoregressive cross-entropy loss already used to train any LLM: the model is simply taught to predict the correct next word at every position, and one of those words happens to be <code>[SEG]</code>. No separate classifier or rule decides when to segment; the language modelling objective already covers it, exactly as we noted in Section 2.1.
+        Because <code>[SEG]</code> is treated as an ordinary word in the answer, learning to place it correctly requires nothing beyond the standard autoregressive cross-entropy loss already used to train any LLM: the model is simply taught to predict the correct next word at every position, and one of those words happens to be <code>[SEG]</code>. No separate classifier or rule decides when to segment; the language modelling objective already covers it.
       </p>
 
       <p class="body-text">
-        Once the model has learned to emit <code>[SEG]</code>, the next question is how that single token turns into an actual mask. This is the "embedding-as-mask" idea introduced in Section 1.3: the LLM's last hidden layer computes a vector at the position of the <code>[SEG]</code> token, and that vector, not the word itself, is what carries the segmentation request forward.
-      </p>
-
-      <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 1.3rem 0 0.4rem; padding: 18px; background: var(--bg-2); border-radius: 10px; border: 1px solid var(--border);">
-        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-2); background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; padding: 6px 12px;">[SEG] token emitted</span>
-        <span style="color: var(--text-4); font-size: 13px;">→</span>
-        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-2); background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; padding: 6px 12px;">extract its last-layer hidden state</span>
-        <span style="color: var(--text-4); font-size: 13px;">→</span>
-        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-2); background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; padding: 6px 12px;">MLP projection</span>
-        <span style="color: var(--text-4); font-size: 13px;">→</span>
-        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-2); background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; padding: 6px 12px;">combined with image features in mask decoder</span>
-        <span style="color: var(--accent-2); font-size: 13px;">→</span>
-        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 600; color: var(--accent); background: var(--bg-3); border: 1.3px solid var(--accent); border-radius: 6px; padding: 6px 12px;">Predicted Mask</span>
-      </div>
-
-      <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
-        Figure 3b: How a single <code>[SEG]</code> token is turned into a mask (LISA's "embedding-as-mask" mechanism).
+        SegLLM applies this same mechanism to both <code>[REF]</code> and <code>[SEG]</code>. Compared with single-round models like LISA, which need exactly one mask per training example, SegLLM has to handle multiple masks within a single multi-round conversation, which is far more expensive to train on. To keep this computationally feasible, the authors replace SAM's large ViT-H mask decoder with a smaller HIPIE-R50 decoder. This mask decoder, along with the CLIP image encoder, is kept frozen throughout training; only the LLM and the projection layer connecting it to the visual encoder are fine-tuned.
       </p>
 
       <p class="body-text">
-        SegLLM is trained end-to-end on the dataset described in Section 3.1, using this same mechanism for both <code>[REF]</code> and <code>[SEG]</code>. Compared with single-round models like LISA, which need exactly one mask per training example, SegLLM has to handle multiple masks within a single multi-round conversation, which is far more expensive to train on. To keep this computationally feasible, the authors replace SAM's large ViT-H mask decoder with a smaller HIPIE-R50 decoder. This mask decoder, along with the CLIP image encoder, is kept frozen throughout training; only the LLM and the projection layer connecting it to the visual encoder are fine-tuned.
+        At training time, the ground-truth mask and box embeddings are inserted directly after each <code>[SEG]</code> token, rather than the model's own predictions. This is called <strong>teacher forcing</strong>, and it is standard practice for training sequence models: it stops small early mistakes from throwing off everything that follows, so the model always learns from a clean, correct history. At inference time, no ground truth is available, so the model instead feeds its own previous outputs back in, exactly as shown in Figure 0c.
       </p>
 
       <p class="body-text">
-        One more training detail worth knowing: at training time, the ground-truth mask and box embeddings are inserted directly after each <code>[SEG]</code> token, rather than the model's own predictions. This is called <strong>teacher forcing</strong>, and it is standard practice for training sequence models: it stops small early mistakes from throwing off everything that follows, so the model always learns from a clean, correct history. At inference time, no ground truth is available, so the model instead feeds its own previous outputs back in, exactly as shown in Figure 0c.
-      </p>
-
-      <p class="body-text">
-        The training follows a two-objective setup. The <strong>language modelling loss</strong> is the same autoregressive cross-entropy loss just described for <code>[SEG]</code>, extended to also cover <code>[REF]</code>. The <strong>segmentation loss</strong> is where SegLLM's two-query design from Section 2.3 becomes a concrete formula:
+        The training follows a two-objective setup. The <strong>language modelling loss</strong> is the same autoregressive cross-entropy loss just described for <code>[SEG]</code>, extended to also cover <code>[REF]</code>. The <strong>segmentation loss</strong> puts SegLLM's two-query design into a concrete formula:
       </p>
 
       <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-1); background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin: 1.3rem 0; text-align: center; line-height: 2.1;">
@@ -1379,7 +1346,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        Two things about this formula are worth unpacking. First, notice it is a <em>sum of two separate terms</em>, one for the reference mask <code>M<sub>ref</sub></code> and one for the target mask <code>M<sub>tgt</sub></code>. This is exactly the design choice from Section 2.3 written out as maths: grounding the reference object is never left as a side effect of getting the target right, it has its own loss term and is supervised directly.
+        First, notice it is a <em>sum of two separate terms</em>, one for the reference mask <code>M<sub>ref</sub></code> and one for the target mask <code>M<sub>tgt</sub></code>. This is the two-query design written out as maths: grounding the reference object is never left as a side effect of getting the target right, it has its own loss term and is supervised directly.
       </p>
 
       <p class="body-text">
@@ -1402,7 +1369,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        Combining the two gives the model both a stable, pixel-level gradient from cross-entropy and a shape-focused, imbalance-resistant signal from DICE.
+        Combined, they give a stable pixel-level gradient (cross-entropy) plus a shape-focused, imbalance-resistant signal (DICE).
       </p>
 
       <div class="config-grid" style="grid-template-columns: 1fr; max-width: 460px; margin-left: auto; margin-right: auto;">
@@ -1435,11 +1402,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        SegLLM is evaluated across three types of tasks, each with its own primary metric, benchmarked against LISA.
-      </p>
-
-      <p class="body-text">
-        The third task, Multi-round Segmentation (MRSeg), covers four query types of increasing complexity: referring queries, hierarchical queries, interactional queries, and relational queries. As the rounds progress, the complexity of interaction and memory retention increases, leading to a natural decline in cIoU for all models, which is why this task is reported as cIoU per round rather than a single number.
+        SegLLM is evaluated on three tasks, all benchmarked against LISA. The third, Multi-round Segmentation (MRSeg), covers query types of increasing complexity, so it is reported as cIoU per round rather than a single number:
       </p>
 
       <table class="metrics-table">
@@ -1489,7 +1452,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        The gains on single-round benchmarks are particularly notable. SegLLM does not trade off single-turn performance to support multi-turn interaction; it improves both simultaneously. It even beats SESAME, a model built specifically for single-round robustness, by 2.3% cIoU when tested on SESAME's own question templates rather than SegLLM's.
+        SegLLM improves single-round RefCOCO cIoU from 76.5 to 81.5 while also enabling multi-round interaction. It even beats SESAME, a model built specifically for single-round robustness, by 2.3% cIoU when tested on SESAME's own question templates.
       </p>
 
       <div class="sub-heading">
@@ -1499,7 +1462,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        The ablation study isolates the contribution of each of SegLLM's two core modules, tested across three settings: single-round segmentation, standard multi-round MRSeg, and a harder MRSeg subset. The results confirm that both components are necessary for strong performance, especially in the harder multi-round setting.
+        The ablation removes each module in turn across three settings: single-round, standard MRSeg, and a harder MRSeg subset. Both modules matter, and the gap widens in the harder setting.
       </p>
 
       <table class="ablation-table">
@@ -1519,17 +1482,17 @@ layout: blank
           <tr>
             <td>Without Mask Encoding Module</td>
             <td><span class="negative">Large drop</span></td>
-            <td>The LLM no longer receives any information about previously generated masks, effectively reducing the model to a single-round system. Multi-round performance degrades significantly.</td>
+            <td>The LLM no longer receives any information about previously generated masks, effectively reducing the model to a single-round system.</td>
           </tr>
           <tr>
             <td>Without [REF][PAD] query</td>
             <td><span class="negative">Moderate drop</span></td>
-            <td>The decoder loses its ability to ground the reference object. The model can still generate masks but struggles with queries that depend on spatial or hierarchical relationships to prior outputs.</td>
+            <td>The decoder can no longer ground the reference object. The model still generates masks, but fails on queries that depend on spatial or hierarchical relationships to prior outputs.</td>
           </tr>
           <tr>
             <td>Diverse query templates (RefCOCO)</td>
             <td><span class="positive">+9.6%</span></td>
-            <td>When tested with rephrased query variants rather than fixed expressions, SegLLM outperforms LISA by 9.6%, suggesting that multi-round training on varied conversational data improves generalisation to different query phrasings.</td>
+            <td>When tested with rephrased query variants rather than fixed expressions, SegLLM outperforms LISA by 9.6%. Multi-round training on varied conversational data likely helps here.</td>
           </tr>
         </tbody>
       </table>
@@ -1542,11 +1505,11 @@ layout: blank
       </div>
 
       <p class="body-text">
-        Taken together, these results make a strong case for SegLLM: it beats existing methods by a large margin on multi-round segmentation, without giving up anything on single-round tasks. We find this to be a genuinely interesting piece of work. It solves a real and previously underexplored limitation: the inability to follow up on previously segmented objects, which significantly raises the ceiling for interactive segmentation.
+        SegLLM beats LISA by 18–30% on MRSeg and still gains 5 points on single-round RefCOCO. The multi-round follow-up problem it targets, asking about an object relative to one segmented earlier, is one we had not seen addressed before, and the fix is architecturally clean.
       </p>
 
       <p class="body-text">
-        Five open concerns stood out to us while working through the paper, each with our own assessment of what might be done about it where we had something concrete to suggest.
+        Five concerns stood out to us. Where we had a concrete suggestion, we've included one.
       </p>
 
       <div style="background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; margin: 1rem 0;">
@@ -1554,12 +1517,12 @@ layout: blank
           <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--bg-3); border-radius: 4px; padding: 2px 8px;">01</span>
           <strong style="font-size: 14.5px; color: var(--text-1);">Error propagation</strong>
         </div>
-        <p style="font-size: 14px; color: var(--text-2); line-height: 1.75; margin: 0;">If the model makes a wrong segmentation in round one, that error may carry into all subsequent rounds, since each round builds directly on top of previous outputs. This is particularly concerning because the Mask Encoding Module encodes the incorrect mask's spatial bounding box directly into the LLM's input stream, meaning corrupted location information gets passed forward as if it were reliable context. The MRSeg results already hint at this: cIoU declines as rounds increase, which may partly reflect accumulated error rather than just increased task complexity. It would be valuable to know how the model performs when intentionally given a wrong first-round mask.</p>
+        <p style="font-size: 14px; color: var(--text-2); line-height: 1.75; margin: 0;">If the model makes a wrong segmentation in round one, that error may carry into all subsequent rounds, since each round builds directly on top of previous outputs. The Mask Encoding Module encodes the wrong mask's bounding box straight into the LLM's input stream, with no signal to the model that this coordinate is uncertain. The MRSeg results already hint at this: cIoU declines as rounds increase, which may partly reflect accumulated error rather than just increased task complexity. It would be valuable to know how the model performs when intentionally given a wrong first-round mask.</p>
 
         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-2);">
           <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px;">Possible direction</div>
           <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">Part of the problem is that SegLLM never explains itself. The LLM goes straight from the query to the <code>[SEG]</code> token, with no explicit reasoning step in between, so when an error does occur, there is no trace showing which object the model thought it was looking at, or why. Many other reasoning tasks now follow a different pipeline: the model first states its reasoning for a judgment, then produces the judgment itself, sometimes with a confidence score attached. Applying this here would mean having the LLM state, in each round, which object it believes a query refers to and why, before emitting <code>[SEG]</code>. This alone would not stop errors from happening, but it would make them visible, rather than hidden inside a single forward pass into a mask.</p>
-          <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">Once that reasoning trace exists, a strategy similar to Step-DPO [20] becomes possible. Step-DPO improves long-chain mathematical reasoning by locating the specific step where a reasoning chain goes wrong, using a strong LLM to identify the error and generate a corrected version of that step, and then training the model on this corrected step directly. Applied to SegLLM, each conversational round could be treated the way Step-DPO treats a reasoning step: after generating a batch of multi-round conversations, a strong LLM could review the reasoning trace at each round, flag the round where the reference to a previous object first goes wrong, and produce a corrected version. Training on this kind of round-level correction data could directly target the accumulation problem described above, rather than only supervising the final mask in each round.</p>
+          <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">Once that reasoning trace exists, a strategy similar to Step-DPO [15] becomes possible. Step-DPO improves long-chain mathematical reasoning by locating the specific step where a reasoning chain goes wrong, using a strong LLM to identify the error and generate a corrected version of that step, and then training the model on this corrected step directly. Applied to SegLLM, each conversational round could be treated the way Step-DPO treats a reasoning step: after generating a batch of multi-round conversations, a strong LLM could review the reasoning trace at each round, flag the round where the reference to a previous object first goes wrong, and produce a corrected version. Training on this kind of round-level correction data could directly target the accumulation problem described above, rather than only supervising the final mask in each round.</p>
         </div>
       </div>
 
@@ -1568,12 +1531,12 @@ layout: blank
           <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--bg-3); border-radius: 4px; padding: 2px 8px;">02</span>
           <strong style="font-size: 14.5px; color: var(--text-1);">Order sensitivity</strong>
         </div>
-        <p style="font-size: 14px; color: var(--text-2); line-height: 1.75; margin: 0;">The model appears sensitive to conversation ordering, since the <code>[REF]</code> token mechanism is built up sequentially with no global attention over all historical rounds. For example, asking "segment the person" first and then "segment the bag she is holding" may give a different result than asking about the bag before establishing the person as a reference. Drawing on NLP evaluation practice, where reversed options or paraphrased queries are standard robustness tests, a similar approach should be applied here. Testing SegLLM with reordered conversation histories would give a clearer picture of whether the model truly understands relationships or is simply pattern-matching the order of prompts.</p>
+        <p style="font-size: 14px; color: var(--text-2); line-height: 1.75; margin: 0;">The model appears sensitive to conversation ordering, since the <code>[REF]</code> token mechanism is built up sequentially with no global attention over all historical rounds. For example, asking "segment the person" first and then "segment the bag she is holding" may give a different result than asking about the bag before establishing the person as a reference. NLP evaluation routinely uses reversed options and paraphrased queries as robustness tests; the same approach fits here. Reordering conversation histories would show whether the model actually understands the relationships, or is just pattern-matching prompt order.</p>
 
         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-2);">
           <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px;">Possible direction</div>
           <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">This looks like the same underlying problem as positional-keyword sensitivity: the model does not seem to fully understand the query, or in this case the conversation as a whole, independently of the specific order it was presented in. The two failures differ in what is being varied, though, so the fix should differ too. Paraphrasing changes the wording of a single query, while here it is the sequence of rounds that changes; simply rewording queries would not teach the model anything about ordering.</p>
-          <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">A more direct option is to build a dataset of reordered conversations: taking existing multi-round examples and generating several permutations of the round order, then training the model to give the same answer regardless of which permutation it sees. This kind of order-permutation augmentation has been shown to help in other settings. Xiang et al. [22] address order sensitivity of in-context examples in causal language models directly, using multiple permutations together with a consistency loss so the model's output no longer depends on which position an example appears in. Zhang et al. [23] take a similar approach for positional bias more broadly, constructing augmented training data in which every candidate appears at every possible position. Neither paper works on multi-round segmentation specifically, but both support generating a permuted-order dataset as a reasonable way to reduce SegLLM's sensitivity to conversation ordering.</p>
+          <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">A more direct option is to build a dataset of reordered conversations: taking existing multi-round examples and generating several permutations of the round order, then training the model to give the same answer regardless of which permutation it sees. This kind of order-permutation augmentation has been shown to help in other settings. Xiang et al. [17] address order sensitivity of in-context examples in causal language models directly, using multiple permutations together with a consistency loss so the model's output no longer depends on which position an example appears in. Zhang et al. [18] take a similar approach for positional bias more broadly, constructing augmented training data in which every candidate appears at every possible position. Neither paper works on multi-round segmentation specifically, but both support generating a permuted-order dataset as a reasonable way to reduce SegLLM's sensitivity to conversation ordering.</p>
           <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">Generating every possible permutation of a conversation's rounds gets expensive quickly as the number of rounds grows, since the number of orderings grows factorially. A simpler starting point would be to just reverse the original round order for each conversation. This is a single, cheap augmentation per example rather than a full permutation set, and it still gives the model a meaningfully different ordering to learn from, which should be enough to test whether even this minimal amount of order variation improves consistency before committing to the more expensive full-permutation approach.</p>
         </div>
       </div>
@@ -1587,8 +1550,8 @@ layout: blank
 
         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-2);">
           <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px;">Possible direction</div>
-          <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">This growth is real: with two tokens per mask, nine rounds already means eighteen tokens just for mask history, on top of everything else in the input. Some form of compression seems necessary here, not just a nice-to-have. This need shows up even outside research settings: production chat tools such as Claude include a manual compact command specifically to summarise and shrink conversation history once it grows too long, which suggests that unbounded context growth is a practical problem people already work around, not only a theoretical one.</p>
-          <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">One direction worth exploring is to make the mask encoding itself recurrent, rather than independent per round. Right now, each round's mask and box embeddings are computed only from that round's mask, then simply appended to the growing input. An alternative would be to compute each new embedding from both the current mask and a running summary of everything segmented so far, similar to how a Transformer's hidden states carry information forward from earlier tokens, or how an RNN's hidden state is updated at each step. This is close to what Video Detective [21] does for long video understanding: instead of storing a token per segment indefinitely, it recurrently aggregates and updates a small set of memory tokens as new segments arrive, so history is carried forward in a compressed form rather than accumulated in full. Similar designs already exist in the video-understanding literature, where each frame is compressed down to a small, fixed number of tokens tied together by a memory mechanism, rather than letting the token count grow with every frame. Applying the same idea to SegLLM's mask history could keep the input size closer to constant, or at least growing more slowly, even as the number of rounds goes well beyond what the paper currently tests.</p>
+          <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">With two tokens per mask, a nine-round conversation adds 18 tokens to the input, on top of the image patch tokens and text. At the scale of a radiology session with dozens of structures, this alone would push against LLaVA-7B's context window. Production chat tools like Claude even ship a manual <code>/compact</code> command to summarise and shrink conversation history when it grows too long, evidence that unbounded context growth is already a practical problem in deployed systems.</p>
+          <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">One option is to make the mask encoding itself recurrent, rather than independent per round. Right now, each round's mask and box embeddings are computed only from that round's mask, then simply appended to the growing input. An alternative would be to compute each new embedding from both the current mask and a running summary of everything segmented so far, similar to how a Transformer's hidden states carry information forward from earlier tokens, or how an RNN's hidden state is updated at each step. This is close to what Video Detective [16] does for long video understanding: instead of storing a token per segment indefinitely, it recurrently aggregates and updates a small set of memory tokens as new segments arrive, so history is carried forward in a compressed form rather than accumulated in full. Similar designs already exist in the video-understanding literature, where each frame is compressed down to a small, fixed number of tokens tied together by a memory mechanism, rather than letting the token count grow with every frame. Applying the same idea to SegLLM's mask history could keep the input size closer to constant, or at least growing more slowly, even as the number of rounds goes well beyond what the paper currently tests.</p>
         </div>
       </div>
 
@@ -1597,7 +1560,7 @@ layout: blank
           <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--bg-3); border-radius: 4px; padding: 2px 8px;">04</span>
           <strong style="font-size: 14.5px; color: var(--text-1);">No correction mechanism</strong>
         </div>
-        <p style="font-size: 14px; color: var(--text-2); line-height: 1.75; margin: 0;">If a user realises that a mask from an earlier round was wrong, there is no way to correct it within the framework. The incorrect mask has already been encoded into the conversation history and will continue to influence all future rounds. A practical deployment of SegLLM would need some form of undo or correction interface, but the paper does not address this. This is especially relevant in medical settings, where annotation errors can have serious downstream consequences.</p>
+        <p style="font-size: 14px; color: var(--text-2); line-height: 1.75; margin: 0;">If a user realises that a mask from an earlier round was wrong, there is no way to correct it within the framework. The incorrect mask has already been encoded into the conversation history and will continue to influence all future rounds. A practical deployment of SegLLM would need some form of undo or correction interface, but the paper does not address this. This matters especially in medical settings, where interactive segmentation already cuts annotation workload by 3–4× compared to manual labelling [2], but errors in that workflow can have serious downstream consequences.</p>
       </div>
 
       <div style="background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; margin: 1rem 0;">
@@ -1609,14 +1572,14 @@ layout: blank
 
         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-2);">
           <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px;">Possible direction</div>
-          <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">This points, at least in part, to the model not fully understanding how positional information and semantic content are meant to combine within a query. One direction worth exploring is targeted paraphrase augmentation: generating two or three paraphrased versions of existing queries, for example with a strong model such as GPT-5, focused specifically on the positional keyword rather than the whole sentence. Given the trap construction described above, this should go beyond simple synonym swaps such as rewording "on the right" as "to the right of". It should also include queries with two positional words in the same sentence, one negated or contrasted against the other, so the model is trained to resolve the full structure rather than reacting to whichever keyword appears first.</p>
-          <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">It is worth being precise about what existing results do and do not support. The paper's own "diverse query templates" ablation, which showed a +9.6% improvement on RefCOCO, tested variation in the overall phrasing and structure of queries, not variation targeted at positional keywords specifically. This is evidence that broad template diversity helps generalisation in general, but it does not show whether positional-keyword paraphrasing would fix this particular failure. Testing that would need a dedicated follow-up experiment, holding the rest of the query fixed while varying only how the positional relation is expressed, and evaluating on cases built to catch keyword-based shortcuts like the one above.</p>
-          <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">This general direction is supported by work outside this paper. SPARTA [17] studies the same kind of vulnerability directly in reasoning segmentation: grammatically correct paraphrases that preserve a query's meaning can still cause segmentation performance to collapse, suggesting that models in this space tend to rely on surface phrasing rather than robustly understanding the query. SpaRE [18] shows that training on more diverse spatial descriptions leads vision-language models toward a more robust understanding of spatial concepts, rather than models that only work for the specific phrasings seen in training. Hoehing et al. [19] tackle left-right confusion directly, showing that carefully constructed contrastive sentence pairs can improve left-right understanding in CLIP-style models. None of these three papers test positional-keyword paraphrasing within reasoning segmentation specifically, but together they support the direction proposed here. What surprises us is that Hoehing et al. was published in late 2023, well before SegLLM in 2024, so a targeted fix for exactly this kind of left-right confusion was already available in the literature. We are not sure why it was not adopted here. It is possible that training on this scale, across multiple rounds and multiple masks per conversation, already stretched the available compute, leaving little room for an additional round of targeted augmentation.</p>
+          <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">This points, at least in part, to the model not fully understanding how positional information and semantic content are meant to combine within a query. One option is targeted paraphrase augmentation: generating two or three paraphrased versions of existing queries, for example with a strong model such as GPT-5, focused specifically on the positional keyword rather than the whole sentence. Given the trap construction described above, this should go beyond simple synonym swaps such as rewording "on the right" as "to the right of". It should also include queries with two positional words in the same sentence, one negated or contrasted against the other, so the model is trained to resolve the full structure rather than reacting to whichever keyword appears first.</p>
+          <p style="margin: 0 0 0.8em; font-size: 14px; color: var(--text-2); line-height: 1.75;">The paper's own "diverse query templates" ablation, which showed a +9.6% improvement on RefCOCO, tested variation in the overall phrasing and structure of queries, not variation targeted at positional keywords specifically. This is evidence that broad template diversity helps generalisation in general, but it does not show whether positional-keyword paraphrasing would fix this particular failure. Testing that would need a dedicated follow-up experiment, holding the rest of the query fixed while varying only how the positional relation is expressed, and evaluating on cases built to catch keyword-based shortcuts like the one above.</p>
+          <p style="margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.75;">This general direction is supported by work outside this paper. SPARTA [12] studies the same kind of vulnerability directly in reasoning segmentation: grammatically correct paraphrases that preserve a query's meaning can still cause segmentation performance to collapse, suggesting that models in this space tend to rely on surface phrasing rather than robustly understanding the query. SpaRE [13] shows that training on more diverse spatial descriptions leads vision-language models toward a more robust understanding of spatial concepts, rather than models that only work for the specific phrasings seen in training. Hoehing et al. [14] tackle left-right confusion directly, showing that carefully constructed contrastive sentence pairs can improve left-right understanding in CLIP-style models. None of these three papers test positional-keyword paraphrasing within reasoning segmentation specifically, but together they support the direction proposed here. Hoehing et al. was published in late 2023, a year before SegLLM. The fix for left-right confusion was already in the literature; we do not know why SegLLM did not use it. One plausible reason: training on this scale, across multiple rounds and multiple masks per conversation, already stretched the available compute, leaving little room for an additional round of targeted augmentation.</p>
         </div>
       </div>
 
       <p class="body-text">
-        Together with the order-sensitivity concern above, this raises an open question: is it an internal bias picked up during training, or does the model genuinely not understand the query and the spatial relationships in the image. The paper's evaluation does not let us tell these two apart. Either way, the model currently cannot meet the medical imaging segmentation requirements we described at the beginning of this post.
+        Together with the ordering issue, this leaves an unresolved question: is the model taking shortcuts from training data statistics, or does it fail to compose the query at all? The paper's evaluation does not separate these two. Either way, the model currently cannot meet the medical imaging segmentation requirements we described at the beginning of this post.
       </p>
 
       <div class="config-grid" style="grid-template-columns: 1fr; max-width: 560px; margin: 1.8rem auto;">
@@ -1662,11 +1625,6 @@ layout: blank
         <li>Nature Index. Interactive Image Segmentation in Medical Applications. <em>Nature Research Intelligence</em>. Available at: nature.com/nature-index.</li>
         <li>Shaeri, et al. (2025). Explainable Human-in-the-Loop Segmentation via Critic Feedback Signals. arXiv:2510.09945.</li>
         <li>Minaee, S., Boykov, Y., Porikli, F., Plaza, A., Kehtarnavaz, N., &amp; Terzopoulos, D. (2021). Image Segmentation Using Deep Learning: A Survey. <em>IEEE Transactions on Pattern Analysis and Machine Intelligence</em>. arXiv:2001.05566.</li>
-        <li>Otsu, N. (1979). A Threshold Selection Method from Gray-Level Histograms. <em>IEEE Transactions on Systems, Man, and Cybernetics</em>, 9(1), 62–66.</li>
-        <li>Canny, J. (1986). A Computational Approach to Edge Detection. <em>IEEE Transactions on Pattern Analysis and Machine Intelligence</em>, 8(6), 679–698.</li>
-        <li>Vincent, L., &amp; Soille, P. (1991). Watersheds in Digital Spaces: An Efficient Algorithm Based on Immersion Simulations. <em>IEEE Transactions on Pattern Analysis and Machine Intelligence</em>, 13(6), 583–598.</li>
-        <li>Long, J., Shelhamer, E., &amp; Darrell, T. (2015). Fully Convolutional Networks for Semantic Segmentation. <em>CVPR 2015</em>.</li>
-        <li>He, K., Gkioxari, G., Dollár, P., &amp; Girshick, R. (2017). Mask R-CNN. <em>ICCV 2017</em>.</li>
         <li>Cheng, B., Misra, I., Schwing, A. G., Kirillov, A., &amp; Girdhar, R. (2022). Masked-Attention Mask Transformer for Universal Image Segmentation. <em>CVPR 2022</em>.</li>
         <li>Kirillov, A., et al. (2023). Segment Anything. <em>ICCV 2023</em>. arXiv:2304.02643.</li>
         <li>Wei, J., et al. (2022). Chain-of-Thought Prompting Elicits Reasoning in Large Language Models. <em>NeurIPS 2022</em>. arXiv:2201.11903.</li>
