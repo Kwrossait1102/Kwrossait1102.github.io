@@ -676,13 +676,17 @@ layout: blank
 
       <!-- ── Motivation ── -->
       <div class="section-label">
-        <span class="section-num">00</span>
-        <span class="section-title">Motivation</span>
-        <span class="section-line"></span>
+       <span class="section-num">00</span>
+       <span class="section-title">Motivation</span>
+       <span class="section-line"></span>
       </div>
 
       <p class="body-text">
-        Interactive image segmentation plays an important role in medical imaging, helping doctors precisely annotate structures like tumours, organs, and blood vessels to support diagnosis and surgical planning [1]. In practice, doctors rarely ask just one question and stop. Instead, they work through a series of steps: first locating a tumour, then checking the surrounding vasculature, then isolating a specific organ. This process is naturally multi-round. Research has shown that interactive segmentation tools can reduce annotation workload by three to four times compared to traditional manual annotation [2]. The problem is that existing tools treat each query independently. Every time a user asks a new question, they have to re-establish the full context from scratch. This is especially frustrating in medical settings, where anatomical structures are closely related and the result of one segmentation step is almost always the starting point for the next. Bridging this gap, giving models the ability to remember previous interactions, is exactly what motivates the work we discuss in this post.
+       <strong>Interactive image segmentation</strong> lets a user refine what a model segments through natural language, rather than committing to a single fixed query up front. It matters wherever segmentation is used in an exploratory, step-by-step way, such as image editing, robotics, video annotation, and also helping with medical treatment. In a clinical scenario, a doctor rarely asks just one question and stops. Instead, they work through a series of steps: first locating a tumour, then checking the surrounding vasculature, then isolating a specific organ. This process is naturally <em>multi-round</em>, and it is exactly the kind of setting where interactive segmentation shines — helping doctors precisely annotate structures like tumours, organs, and blood vessels to support diagnosis and surgical planning [1]. Research has shown that interactive segmentation tools can reduce annotation workload by three to four times compared to traditional manual annotation [2]. The problem is that existing tools treat each query independently. Every time a user asks a new question, they have to re-establish the full context from scratch. This is especially frustrating in medical settings, where anatomical structures are closely related and the result of one segmentation step is almost always the starting point for the next. Bridging this gap, <em>giving models the ability to remember previous interactions</em>, is exactly what motivates the work we discuss in this post.
+      </p>
+
+      <p class="body-text">
+      The rest of this post is organised as follows. Section 1 sets up what image segmentation is and why current LLM-based models cannot handle follow-up queries. Section 2 walks through SegLLM's two core changes: the mask encoding module and the mask-aware decoder. Section 3 covers the training data and setup, Section 4 presents the results, and Section 5 shares our own critique of the paper.
       </p>
 
       <!-- ── Section 1 ── -->
