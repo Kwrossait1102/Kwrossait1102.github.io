@@ -676,21 +676,25 @@ layout: blank
 
       <!-- ── Motivation ── -->
       <div class="section-label">
-       <span class="section-num">00</span>
-       <span class="section-title">Motivation</span>
-       <span class="section-line"></span>
+        <span class="section-num">00</span>
+        <span class="section-title">Motivation</span>
+        <span class="section-line"></span>
       </div>
 
       <p class="body-text">
-       <strong>Interactive image segmentation</strong> lets a user refine what a model segments through natural language, rather than committing to a single fixed query up front. It matters wherever segmentation is used in an exploratory, step-by-step way, such as image editing, robotics, video annotation, and also helping with medical treatment. 
+        <strong>Interactive image segmentation</strong> lets a user refine what a model segments through natural language, rather than committing to a single fixed query up front. It matters wherever segmentation is used in an exploratory, step-by-step way, such as image editing, robotics, video annotation, and medical imaging [1].
       </p>
 
       <p class="body-text">
-        In a clinical scenario, a doctor rarely asks just one question and stops. Instead, they work through a series of steps: first locating a tumour, then checking the surrounding vasculature, then isolating a specific organ. This process is naturally <em>multi-round</em>, and it is exactly the kind of setting where interactive segmentation shines — helping doctors precisely annotate structures like tumours, organs, and blood vessels to support diagnosis and surgical planning [1]. Research has shown that interactive segmentation tools can reduce annotation workload by three to four times compared to traditional manual annotation [2]. The problem is that existing tools treat each query independently. Every time a user asks a new question, they have to re-establish the full context from scratch. This is especially frustrating in medical settings, where anatomical structures are closely related and the result of one segmentation step is almost always the starting point for the next. Bridging this gap, <em>giving models the ability to remember previous interactions</em>, is exactly what motivates the work we discuss in this post.
+        In a clinical scenario, a doctor rarely asks just one question and stops. Instead, they work through a series of steps: first locating a tumour, then checking the surrounding vasculature, then isolating a specific organ. This process is naturally <em>multi-round</em>, where the result of one segmentation step is almost always the starting point for the next.
       </p>
 
       <p class="body-text">
-      The rest of this post is organised as follows. Section 1 sets up what image segmentation is and why current LLM-based models cannot handle follow-up queries. Section 2 walks through SegLLM's two core changes: the mask encoding module and the mask-aware decoder. Section 3 covers the training data and setup, Section 4 presents the results, and Section 5 shares our own critique of the paper.
+        The problem is that existing tools treat each query independently. Every time a user asks a new question, they have to re-establish the full context from scratch. This is especially frustrating in medical settings, where anatomical structures are closely related. Bridging this gap, <em>giving models the ability to remember previous interactions</em>, is what this post is about.
+      </p>
+
+      <p class="body-text">
+        The rest of this post is organised as follows. Section 1 sets up what image segmentation is and why current LLM-based models cannot handle follow-up queries. Section 2 walks through SegLLM's two core changes: the mask encoding module and the mask-aware decoder. Section 3 covers the training data and setup, Section 4 presents the results, and Section 5 shares our own critique of the paper.
       </p>
 
       <!-- ── Section 1 ── -->
@@ -702,113 +706,22 @@ layout: blank
 
       <div class="sub-heading">
         <span class="sub-heading-num">1.1</span>
-        <span class="sub-heading-text">What is Image Segmentation?</span>
+        <span class="sub-heading-text">Image Segmentation</span>
         <span class="sub-heading-line"></span>
       </div>
 
       <p class="body-text">
-        Image segmentation is the task of partitioning a digital image into multiple regions by assigning a label to every pixel, such that pixels with the same label share certain visual characteristics [3]. It is one of the most fundamental problems in computer vision, underpinning applications from medical imaging and autonomous driving to scene understanding and interactive editing. Put simply: instead of just saying "there is a dog somewhere in this photo" (classification), or drawing a box around it (detection), segmentation traces the dog's exact outline, pixel by pixel.
+        Image segmentation assigns a label to every pixel in an image, tracing objects out at pixel resolution rather than just detecting or classifying them [3]. Instead of saying <em>"there is a dog somewhere in this photo"</em>, or drawing a box around it, segmentation outlines the dog exactly, pixel by pixel. It is one of the most fundamental problems in computer vision, underpinning applications from medical imaging and autonomous driving to interactive editing.
       </p>
-
-      <p class="body-text">
-        Not all segmentation tasks ask the same question, though. It helps to separate three flavours of the problem, since later sections build directly on this distinction:
-      </p>
-
-      <div class="info-card-grid three-col">
-        <div class="info-card">
-          <div class="info-card-label">Semantic Segmentation</div>
-          <div class="info-card-body">
-            Labels every pixel with a category, such as "road", "sky", or "person", but does not distinguish between individual instances. Two different people in the photo are both just labelled "person"; the model does not separate person A from person B.
-          </div>
-        </div>
-        <div class="info-card">
-          <div class="info-card-label">Instance Segmentation</div>
-          <div class="info-card-body">
-            Goes a step further: it separates individual objects of the same category from one another. Person A gets one mask, person B gets a different mask, even though both are labelled "person".
-          </div>
-        </div>
-        <div class="info-card">
-          <div class="info-card-label">Panoptic Segmentation</div>
-          <div class="info-card-body">
-            Combines both: countable objects (people, cars) are separated into instances, while uncountable background regions (sky, grass, road) are labelled semantically. Every pixel in the image ends up covered.
-          </div>
-        </div>
-      </div>
 
       <div class="sub-heading">
         <span class="sub-heading-num">1.2</span>
-        <span class="sub-heading-text">Before Deep Learning: Rule-based &amp; Statistical Methods</span>
+        <span class="sub-heading-text">The Modern Approach</span>
         <span class="sub-heading-line"></span>
       </div>
 
       <p class="body-text">
-        Before deep learning, segmentation relied on hand-designed rules and simple statistics over pixel values, rather than features learned from data. Three families of techniques dominated this era:
-      </p>
-
-      <div class="pipeline-steps">
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">01</span>
-          <div class="pipeline-step-content">
-            <strong>Thresholding.</strong> The simplest approach: pick a brightness or colour value as a cutoff, and group pixels into "above" and "below". One of the most widely used variants automatically picks this cutoff by finding the value that best separates the image's two dominant brightness modes [4]. Works well when the object of interest has a clearly different intensity from the background, e.g. separating dark text from a white page.
-          </div>
-        </div>
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">02</span>
-          <div class="pipeline-step-content">
-            <strong>Edge detection.</strong> Looks for sharp, local changes in pixel intensity, on the assumption that object boundaries usually correspond to such changes. Classic filters such as the Canny edge detector [5] scan the image for these jumps and connect them into outlines.
-          </div>
-        </div>
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">03</span>
-          <div class="pipeline-step-content">
-            <strong>Clustering.</strong> Statistical methods such as k-means or the watershed transform [6] group pixels by similarity in colour, intensity, or texture, without needing an explicit boundary rule. Pixels that "look alike" end up in the same region.
-          </div>
-        </div>
-      </div>
-
-      <p class="body-text">
-        These methods are fast, require no training data, and are easy to reason about. However, they all rely on hand-crafted assumptions about what makes pixels belong together, such as a fixed brightness cutoff, a fixed notion of "sharp change", or a fixed similarity measure. Real-world images often break these assumptions: shadows and uneven lighting confuse thresholding, textured backgrounds create false edges, and objects that share a similar colour to their surroundings get grouped together incorrectly by clustering. None of these methods have any real concept of an "object"; they only look at pixel statistics, not semantics.
-      </p>
-
-      <div class="sub-heading">
-        <span class="sub-heading-num">1.3</span>
-        <span class="sub-heading-text">Deep Learning-based Image Segmentation</span>
-        <span class="sub-heading-line"></span>
-      </div>
-
-      <p class="body-text">
-        Deep learning changed this by letting the model learn what a "boundary" or "region" looks like directly from data, rather than relying on hand-crafted rules. The field's evolution can be seen as a series of steps, each solving a limitation of the one before it:
-      </p>
-
-      <div class="pipeline-steps">
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">FCN</span>
-          <div class="pipeline-step-content">
-            <strong>Fully Convolutional Networks</strong> [7] took standard image-classification networks (which end in a single "this image is a cat" prediction) and replaced their final layers so that every pixel gets its own prediction instead. This made pixel-wise, end-to-end labelling possible for the first time and is the basis of modern <em>semantic</em> segmentation. Its main limitation: it labels categories, but has no notion of separate object instances.
-          </div>
-        </div>
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">Mask R-CNN</span>
-          <div class="pipeline-step-content">
-            <strong>Mask R-CNN</strong> [8] addressed exactly that gap. It first detects individual objects with bounding boxes, like a detector would, and then predicts a pixel mask inside each box. This is what gives it the ability to separate person A from person B, achieving true <em>instance</em> segmentation. The trade-off is that it depends on a two-stage pipeline (detecting boxes, then segmenting inside them), which adds complexity and can allow detection mistakes to carry over into the mask.
-          </div>
-        </div>
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">MaskFormer</span>
-          <div class="pipeline-step-content">
-            <strong>MaskFormer</strong> [9] simplified this by borrowing the transformer's "query" mechanism: instead of first drawing boxes, the model learns a fixed set of queries that each directly predict one mask and its category. This unifies semantic, instance, and panoptic segmentation under one framework, removing the need for separate specialised pipelines.
-          </div>
-        </div>
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">SAM</span>
-          <div class="pipeline-step-content">
-            <strong>SAM</strong> (Segment Anything Model) [10] marked a further shift towards generality. Trained on over 1 billion masks, SAM can segment almost any object in almost any image without needing to be retrained, simply by giving it a point, a box, or a rough scribble as a prompt. This made segmentation far more flexible, but the prompt itself still has to be a simple visual cue. SAM has no way to understand a prompt like "the person <em>talking on the phone</em>", since that requires reading and reasoning about language rather than just clicking a point.
-          </div>
-        </div>
-      </div>
-
-      <p class="body-text">
-        By the time we reach SAM, most modern deep-learning segmentation models, especially the ones that accept a text query rather than just a click or a box, converge on a shared, three-part architecture. It is worth sketching this out once, since SegLLM (discussed in Section 2) is itself a variation on exactly this pattern:
+        Modern segmentation models are almost all built on deep learning, and the ones that accept a text query rather than just a click or a box converge on a shared three-part architecture:
       </p>
 
       <svg viewBox="0 0 780 300" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; margin: 1.3rem 0; font-family: 'Inter', sans-serif;">
@@ -859,25 +772,33 @@ layout: blank
       </svg>
 
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-top: -0.6rem; margin-bottom: 1.5rem;">
-        Figure 0: The typical modern segmentation architecture. Separate encoders process the image and text, and their outputs are fused inside a mask decoder that predicts the final mask.
+        Figure 0: The typical modern segmentation architecture. The image and the text query are processed by separate encoders, and their outputs are fused inside a mask decoder that predicts the final mask.
+      </p>
+
+      <p class="body-text">
+        <strong>MaskFormer</strong> [9] was the first to fit the different kinds of segmentation tasks into this three-part recipe, by borrowing the transformer's "query" mechanism: a fixed set of learned queries each predicts one mask and its category directly.
+      </p>
+
+      <p class="body-text">
+        <strong>SAM</strong> (Segment Anything Model) [10] then pushed the same recipe to arbitrary objects: trained on over one billion masks, it can segment almost any object in almost any image given a point, box, or scribble as a prompt, without retraining.
       </p>
 
       <div class="highlight-box">
-        <strong>Where this leaves us:</strong> every method above needs an explicit, low-level prompt, such as a category name, a box, or a click. None of them can take a free-form sentence and work out on their own <em>which</em> pixels the sentence is describing. That gap is exactly where reasoning segmentation, discussed next, comes in.
+        <strong>What's missing:</strong> every method above needs an explicit, low-level prompt: a category name, a bounding box, or a click. None of them can take a free-form sentence like <em>"the food high in Vitamin C"</em> and work out on their own which pixels the sentence is describing. <strong>Reasoning segmentation</strong> closes that gap.
       </div>
 
       <div class="sub-heading">
-        <span class="sub-heading-num">1.4</span>
+        <span class="sub-heading-num">1.3</span>
         <span class="sub-heading-text">Reasoning Segmentation</span>
         <span class="sub-heading-line"></span>
       </div>
 
       <p class="body-text">
-        Reasoning in Large Language Models refers to the ability to solve complex problems through multi-step inference, drawing on learned knowledge to chain intermediate conclusions towards a final answer [11]. Unlike simple pattern matching, LLM reasoning involves understanding context, resolving ambiguity, and following implicit logical structure. This capability has been demonstrated across diverse tasks including mathematical problem solving, commonsense inference, and question answering [12].
+        Large Language Models can do more than pattern-match text. They can chain intermediate steps to solve problems that require background knowledge and inference [11]. For example, they can work out the answer to a word problem, or resolve what "she" refers to in a paragraph [12]. This ability to <em>reason</em> is what makes it possible to plug an LLM into segmentation in the first place.
       </p>
 
       <p class="body-text">
-        It helps to make this concrete before moving on, since the distinction between "reasoning segmentation" and ordinary segmentation is easy to lose sight of once the architecture gets more complex. The key difference is whether the query names the target object directly, or only describes it indirectly.
+        The key difference between <strong>reasoning segmentation</strong> and ordinary segmentation is whether the query names the target object directly, or only describes it indirectly:
       </p>
 
       <div class="info-card-grid three-col">
@@ -905,11 +826,11 @@ layout: blank
       </div>
 
       <p class="body-text">
-        This is exactly the gap identified in Section 1.3: a model like SAM can segment "the orange" perfectly well once it is given that label, but it has no way of resolving "the food that is high in Vitamin C" into a label on its own, and it has no mechanism at all for reasoning about relationships between objects, as the third example requires. That resolving step, working out <em>which</em> object a description refers to before any segmentation happens, is what reasoning segmentation adds.
+        A model like SAM can segment "the orange" perfectly well once it is given that label, but it has no way of resolving "the food that is high in Vitamin C" into a label on its own, and no mechanism at all for reasoning about relationships between objects, as the third example requires. That resolving step, working out <em>which</em> object a description refers to before any segmentation happens, is what <strong>reasoning segmentation</strong> adds. More formally: given an implicit natural language query, the model must reason about image content to understand relationships, context, and intent before producing a mask [13].
       </p>
 
       <p class="body-text">
-        The two reasoning queries above are instances of a task called <strong>reasoning segmentation</strong>, in contrast to the label-based query. More formally: given an implicit, complex natural language query, the model must reason about image content to understand relationships, context, and intent before producing a segmentation mask [13]. As the examples show, this goes well beyond simply matching a text label to a visual region. Models such as <strong>LLaVA</strong> [14] showed that aligning visual encoders with LLMs through instruction tuning enables rich cross-modal reasoning. Building on this, <strong>LISA</strong> [13] operationalised reasoning segmentation by introducing a learned <code>[SEG]</code> token as a clean interface between language-level reasoning and pixel-level mask output, without any handcrafted heuristics for when or what to segment.
+        The concrete way this is done is via <strong>LISA</strong> [13], which introduced a single learned token, <code>[SEG]</code>, as the interface between language reasoning and mask output. This is the foundation SegLLM builds on.
       </p>
 
       <div class="info-card-grid" style="grid-template-columns: 1fr;">
@@ -923,7 +844,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        This changes the three-part architecture from Section 1.3 by inserting a reasoning step in the middle. The encoders no longer feed the mask decoder directly. Instead, their outputs go into an LLM that reasons over both, and only the LLM's output (the <code>[SEG]</code> token's hidden state) is passed on to the mask decoder:
+        Adding an LLM changes the three-part architecture: the encoders no longer feed the mask decoder directly. Instead, their outputs go into an LLM that reasons over both, and only the LLM's output (the <code>[SEG]</code> token's hidden state) is passed on to the mask decoder:
       </p>
 
       <svg viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; margin: 1.3rem 0; font-family: 'Inter', sans-serif;">
@@ -988,25 +909,21 @@ layout: blank
       </p>
 
       <div class="highlight-box">
-        <strong>Note:</strong> in many modern approaches, the "LLM" here is actually a multimodal <strong>VLM</strong> (Vision-Language Model), which already has the components needed to handle both image and text internally. In that case, a separate text encoder is not needed, since the user's text query is fed straight into the model, which tokenizes and processes it itself alongside the visual input. This is exactly the case for LLaVA-based systems like LISA and SegLLM, discussed next.
+        <strong>Note:</strong> in many modern approaches, the "LLM" here is actually a multimodal <strong>VLM</strong> (Vision-Language Model), which already has the components needed to handle both image and text internally. In that case, a separate text encoder is not needed, since the user's text query is fed straight into the model, which tokenizes and processes it itself alongside the visual input. This is exactly the case for LLaVA-based systems like LISA and SegLLM.
       </div>
 
       <div class="sub-heading">
-        <span class="sub-heading-num">1.5</span>
+        <span class="sub-heading-num">1.4</span>
         <span class="sub-heading-text">The Problem: Single-turn Limitation</span>
         <span class="sub-heading-line"></span>
       </div>
 
       <p class="body-text">
-        Despite these advances, current LLM-based segmentation models are limited to single-turn queries. Once a mask is generated, the model has no memory of it, and users cannot follow up with queries that reference previous segmentation outputs.
+        The LLM in Figure 0b only ever sees each query once. Once a mask is generated, the model has no memory of it, and users cannot follow up with queries that reference previous segmentation outputs.
       </p>
 
       <p class="body-text">
-        Looking back at the architecture in Figure 0b makes this limitation concrete. Information only flows in one direction: the image and text go into the LLM, the LLM emits a <code>[SEG]</code> token, and the mask decoder turns that into a mask. Once the mask decoder has produced its output, the pipeline is finished. There is no path for that mask, or any other trace of what just happened, to flow back into the LLM. This means that if a user asks a follow-up question that depends on the previous result, the LLM has no way to access what it just segmented, and it has no record that a previous round of segmentation even took place. To support multi-round reasoning, or to let the model reason about an object based on where a previously segmented object was, this feedback path would have to exist. In the architecture as it stands, it simply does not.
-      </p>
-
-      <p class="body-text">
-        This limitation breaks the natural flow of interactive segmentation, which is increasingly important in real-world annotation, editing, and scene understanding pipelines.
+        In Figure 0b, information only flows in one direction: the image and text go into the LLM, the LLM emits a <code>[SEG]</code> token, and the mask decoder turns that into a mask. Once the mask decoder has produced its output, the pipeline is finished. There is no path for that mask, or any other trace of what just happened, to flow back into the LLM. This means that if a user asks a follow-up question that depends on the previous result, the LLM has no way to access what it just segmented, and it has no record that a previous round of segmentation even took place. Supporting multi-round reasoning would require exactly this feedback path, which Figure 0b does not have.
       </p>
 
       <div class="callout">
@@ -1015,11 +932,11 @@ layout: blank
       </div>
 
       <p class="body-text">
-        The second query is beyond what most existing models can handle, since it depends entirely on the result of the first.
+        Without access to Round 1's mask, the model has no way to resolve "the man from the previous prompt".
       </p>
 
       <p class="body-text">
-        This might seem like an easy gap to close. When we use a chatbot such as ChatGPT, Claude, or Gemini in a browser, we can have a long, multi-turn conversation, and the model clearly remembers what was said earlier in the same chat. Since reasoning segmentation is built on exactly this kind of LLM, it seems reasonable to expect that it should be able to do the same.
+        You might think this is easy to fix. When we use a chatbot such as ChatGPT, Claude, or Gemini, we can have a long, multi-turn conversation, and the model clearly remembers what was said earlier. Since reasoning segmentation is built on the same kind of LLM, it seems reasonable to expect that it should be able to do the same. Section 2 shows why it isn't.
       </p>
 
       <!-- ── Section 2 ── -->
@@ -1030,7 +947,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        Section 1.5 pinpointed exactly where the single-round architecture breaks down: once the mask decoder produces an output, that information has nowhere to go, since nothing connects it back to the LLM. SegLLM's core contribution is to add that missing connection. After each round, the mask the decoder has just produced is encoded and fed back into the LLM as part of the input for the next round, so the LLM entering round 2 has direct access to what was segmented in round 1. This turns the one-way pipeline from Figure 0b into a loop.
+        Section 1.4 pinpointed exactly where the single-round architecture breaks down: once the mask decoder produces an output, that information has nowhere to go, since nothing connects it back to the LLM. SegLLM's core contribution is to add that missing connection. After each round, the mask the decoder has just produced is encoded and fed back into the LLM as part of the input for the next round, so the LLM entering round 2 has direct access to what was segmented in round 1. This turns the one-way pipeline from Figure 0b into a loop.
       </p>
 
       <svg viewBox="0 0 900 460" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; margin: 1.3rem 0; font-family: 'Inter', sans-serif;">
@@ -1131,7 +1048,7 @@ layout: blank
 
       <div style="display: flex; align-items: center; gap: 20px; background: var(--green-bg); border: 1px solid var(--green-border); border-radius: 10px; padding: 16px 22px; margin: 1.3rem 0;">
         <div style="flex-shrink: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--green-text); background: rgba(255,255,255,0.5); padding: 6px 14px; border-radius: 20px; white-space: nowrap;">Recap</div>
-        <div style="font-size: 14px; color: var(--green-text); line-height: 1.7;">Our goal is to predict <strong>a segmentation mask</strong> from <strong>an image and a natural language prompt</strong>, following the architecture introduced in Section 1.4.</div>
+        <div style="font-size: 14px; color: var(--green-text); line-height: 1.7;">Our goal is to predict <strong>a segmentation mask</strong> from <strong>an image and a natural language prompt</strong>, following the architecture introduced in Section 1.3.</div>
       </div>
 
       <p class="body-text">
@@ -1139,7 +1056,7 @@ layout: blank
       </p>
 
       <p class="body-text">
-        The text prompt does not go through a separate text encoder. As noted in Section 1.4, the LLM here is itself a multimodal VLM (LLaVA), so the text query is simply tokenized and embedded using the LLM's own embedding layer, the same way any text input to an LLM would be.
+        The text prompt does not go through a separate text encoder. As noted in Section 1.3, the LLM here is itself a multimodal VLM (LLaVA), so the text query is simply tokenized and embedded using the LLM's own embedding layer, the same way any text input to an LLM would be.
       </p>
 
       <p class="body-text">
@@ -1425,7 +1342,7 @@ layout: blank
       </p>
 
       <p class="body-text">
-        Once the model has learned to emit <code>[SEG]</code>, the next question is how that single token turns into an actual mask. This is the "embedding-as-mask" idea introduced in Section 1.4: the LLM's last hidden layer computes a vector at the position of the <code>[SEG]</code> token, and that vector, not the word itself, is what carries the segmentation request forward.
+        Once the model has learned to emit <code>[SEG]</code>, the next question is how that single token turns into an actual mask. This is the "embedding-as-mask" idea introduced in Section 1.3: the LLM's last hidden layer computes a vector at the position of the <code>[SEG]</code> token, and that vector, not the word itself, is what carries the segmentation request forward.
       </p>
 
       <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 1.3rem 0 0.4rem; padding: 18px; background: var(--bg-2); border-radius: 10px; border: 1px solid var(--border);">
