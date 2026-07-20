@@ -656,7 +656,7 @@ layout: blank
         <div class="article-eyebrow">
           <span class="eyebrow-tag">segmentation</span>
           <span class="eyebrow-dot">·</span>
-          <span class="eyebrow-meta">Blog Post 01 &nbsp;·&nbsp; July 2026</span>
+          <span class="eyebrow-meta">Blog Post 01 &nbsp;·&nbsp; May 2026</span>
         </div>
         <h1 class="article-title">SegLLM: Multi-round Reasoning Segmentation</h1>
         <p class="article-subtitle">
@@ -670,7 +670,7 @@ layout: blank
           <div class="author-names">
             <strong>Aran Moradi</strong> &amp; <strong>Qianyu Bu</strong>
           </div>
-          <span class="read-time">~25 min read</span>
+          <span class="read-time">~28 min read</span>
         </div>
       </header>
 
@@ -694,7 +694,7 @@ layout: blank
       </p>
 
       <p class="body-text">
-        The rest of this post is organised as follows. Section 1 sets up what image segmentation is and why current LLM-based models cannot handle follow-up queries. Section 2 walks through SegLLM's two core changes: the mask encoding module and the mask-aware decoder. Section 3 covers the training data and setup, Section 4 presents the results, and Section 5 shares our own critique of the paper.
+        The rest of this post is organised as follows. Section 1 sets up what image segmentation is and why current LLM-based models cannot handle follow-up queries. Section 2 walks through SegLLM's architecture and its two core changes: the mask encoding module and the mask-aware decoder. Section 3 covers the training data and setup, Section 4 presents the results, and Section 5 shares our own critique of the paper.
       </p>
 
       <!-- ── Section 1 ── -->
@@ -772,7 +772,7 @@ layout: blank
       </svg>
 
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-top: -0.6rem; margin-bottom: 1.5rem;">
-        Figure 0: The typical modern segmentation architecture. The image and the text query are processed by separate encoders, and their outputs are fused inside a mask decoder that predicts the final mask.
+        Figure 1: The typical modern segmentation architecture. The image and the text query are processed by separate encoders, and their outputs are fused inside a mask decoder that predicts the final mask.
       </p>
 
       <p class="body-text">
@@ -905,7 +905,7 @@ layout: blank
       </svg>
 
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-top: -0.6rem; margin-bottom: 1.5rem;">
-        Figure 0b: Reasoning segmentation architecture. The LLM sits between the encoders and the mask decoder, reasoning over both modalities before emitting the <code>[SEG]</code> token that drives mask prediction.
+        Figure 2: Reasoning segmentation architecture. The LLM sits between the encoders and the mask decoder, reasoning over both modalities before emitting the <code>[SEG]</code> token that drives mask prediction.
       </p>
 
       <div class="highlight-box">
@@ -919,11 +919,11 @@ layout: blank
       </div>
 
       <p class="body-text">
-        The LLM in Figure 0b only ever sees each query once. Once a mask is generated, the model has no memory of it, and users cannot follow up with queries that reference previous segmentation outputs.
+        The LLM in Figure 2 only ever sees each query once. Once a mask is generated, the model has no memory of it, and users cannot follow up with queries that reference previous segmentation outputs.
       </p>
 
       <p class="body-text">
-        In Figure 0b, information only flows in one direction: the image and text go into the LLM, the LLM emits a <code>[SEG]</code> token, and the mask decoder turns that into a mask. Once the mask decoder has produced its output, the pipeline is finished. There is no path for that mask, or any other trace of what just happened, to flow back into the LLM. This means that if a user asks a follow-up question that depends on the previous result, the LLM has no way to access what it just segmented, and it has no record that a previous round of segmentation even took place. Supporting multi-round reasoning would require exactly this feedback path, which Figure 0b does not have.
+        In Figure 2, information only flows in one direction: the image and text go into the LLM, the LLM emits a <code>[SEG]</code> token, and the mask decoder turns that into a mask. Once the mask decoder has produced its output, the pipeline is finished. There is no path for that mask, or any other trace of what just happened, to flow back into the LLM. This means that if a user asks a follow-up question that depends on the previous result, the LLM has no way to access what it just segmented, and it has no record that a previous round of segmentation even took place. Supporting multi-round reasoning would require exactly this feedback path, which Figure 2 does not have.
       </p>
 
       <div class="callout">
@@ -947,7 +947,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        SegLLM adds the missing feedback path. After each round, the mask the decoder just produced is encoded and fed back into the LLM as part of the next round's input, so the LLM entering round 2 has direct access to what was segmented in round 1. This turns the one-way pipeline from Figure 0b into a loop.
+        SegLLM adds the missing feedback path. After each round, the mask the decoder just produced is encoded and fed back into the LLM as part of the next round's input, so the LLM entering round 2 has direct access to what was segmented in round 1. This turns the one-way pipeline from Figure 2 into a loop.
       </p>
 
       <svg viewBox="0 0 900 460" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; margin: 1.3rem 0; font-family: 'Inter', sans-serif;">
@@ -1021,23 +1021,7 @@ layout: blank
       </svg>
 
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-top: -0.6rem; margin-bottom: 1.5rem;">
-        Figure 0c: Simplified architecture diagram. The Mask Encoder sits alongside the Image and Text Encoders and feeds the previous round's masks and information back into the LLM, closing the loop that Figure 0b was missing.
-      </p>
-
-      <p class="body-text">
-        SegLLM also makes a second, related change: conversation context is fed into the mask decoder itself, not just into the LLM. For now, the feedback path from mask decoder back to LLM is the key idea to take away.
-      </p>
-
-      <p class="body-text">
-        The demo below shows this in action: each new query builds on the mask from the previous round.
-      </p>
-
-      <img src="assets/live_demo.gif"
-        alt="SegLLM multi-round segmentation demo"
-        style="width: 100%; border-radius: 8px; margin: 1rem 0 0.4rem;"
-      />
-      <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
-        Figure 1: Interactive Multi-Round Segmentation Demo.
+        Figure 3: Simplified architecture diagram. The Mask Encoder sits alongside the Image and Text Encoders and feeds the previous round's masks and information back into the LLM, closing the loop that Figure 2 was missing.
       </p>
 
       <div class="sub-heading">
@@ -1047,7 +1031,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        SegLLM fills in the abstract architecture from Figure 0b with concrete models, and adds one new component for the feedback loop. On the input side, the image is processed by a pre-trained <strong>image encoder</strong> (CLIP-ViT-Large), which turns it into patch embeddings. These embeddings live in a different space than the LLM's text embeddings, so a small <strong>projection layer</strong> (an MLP) maps them into the LLM's own embedding space, letting image and text be processed as tokens in one shared sequence.
+        SegLLM fills in the abstract architecture from Figure 2 with concrete models, and adds one new component for the feedback loop. On the input side, the image is processed by a pre-trained <strong>image encoder</strong> (CLIP-ViT-Large), which turns it into patch embeddings. These embeddings live in a different space than the LLM's text embeddings, so a small <strong>projection layer</strong> (an MLP) maps them into the LLM's own embedding space, letting image and text be processed as tokens in one shared sequence.
       </p>
 
       <p class="body-text">
@@ -1055,7 +1039,7 @@ layout: blank
       </p>
 
       <p class="body-text">
-        The new component is the <strong>Mask Encoder</strong>. Its job is to take the mask produced in a previous round and turn it into embeddings that go back into the LLM alongside the current image and text. This is what closes the loop that Figure 0b was missing. To handle references across rounds, the LLM also uses a second special token alongside <code>[SEG]</code>, called <code>[REF]</code>. Where <code>[SEG]</code> marks the object to be segmented <em>now</em>, <code>[REF]</code> marks an earlier object the current query is relating back to. Having two tokens lets the LLM distinguish "the new object I need to segment" from "the earlier object this query is referring to".
+        The new component is the <strong>Mask Encoder</strong>. Its job is to take the mask produced in a previous round and turn it into embeddings that go back into the LLM alongside the current image and text. To handle references across rounds, the LLM also uses a second special token alongside <code>[SEG]</code>, called <code>[REF]</code>. Where <code>[SEG]</code> marks the object to be segmented <em>now</em>, <code>[REF]</code> marks an earlier object the current query is relating back to. Having two tokens lets the LLM distinguish "the new object I need to segment" from "the earlier object this query is referring to".
       </p>
 
       <div class="info-card-grid">
@@ -1074,15 +1058,6 @@ layout: blank
           <div class="info-card-cite">Liu et al., NeurIPS 2023 [9]</div>
         </div>
       </div>
-
-      <img
-        src="assets/segllm_architecture.png"
-        alt="SegLLM model architecture diagram"
-        style="width: 100%; border-radius: 8px; margin: 1rem 0 0.4rem;"
-      />
-      <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
-        Figure 2: SegLLM architecture overview. Previous mask outputs are fed back into the LLM via Mask Encoder and Box Encoder, enabling multi-round reasoning segmentation.
-      </p>
 
       <p class="body-text">
         The concrete backbone models for each component are:
@@ -1141,7 +1116,7 @@ layout: blank
       </div>
 
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
-        Figure 2a: Mask embedding generation pipeline.
+        Figure 4a: Mask embedding generation pipeline.
       </p>
 
       <p class="body-text">
@@ -1159,7 +1134,7 @@ layout: blank
       </div>
 
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
-        Figure 2b: Bounding box embedding generation pipeline.
+        Figure 4b: Bounding box embedding generation pipeline.
       </p>
 
       <p class="body-text">
@@ -1203,7 +1178,7 @@ layout: blank
       </div>
 
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
-        Figure 2c: The first query, grounding <code>[REF]</code> to the previously segmented object.
+        Figure 5a: The first query, grounding <code>[REF]</code> to the previously segmented object.
       </p>
 
       <p class="body-text">
@@ -1221,7 +1196,7 @@ layout: blank
       </div>
 
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
-        Figure 2d: The second query, resolving <code>[SEG]</code> in light of the grounded <code>[REF]</code>.
+        Figure 5b: The second query, resolving <code>[SEG]</code> in light of the grounded <code>[REF]</code>.
       </p>
 
       <p class="body-text">
@@ -1236,10 +1211,22 @@ layout: blank
         <strong>Design choice:</strong> both queries are trained with their own segmentation loss, so grounding the reference object is not left as a side effect of segmenting the target; it is directly supervised as its own task. This is what lets the decoder correctly resolve queries like "the head of the person we identified earlier", rather than only ever being trained to produce the final answer.
       </div>
 
+      <p class="body-text">
+        The demo below shows the full pipeline in action: each new query builds on the mask from the previous round.
+      </p>
+
+      <img src="assets/live_demo.gif"
+        alt="SegLLM multi-round segmentation demo"
+        style="width: 100%; border-radius: 8px; margin: 1rem 0 0.4rem;"
+      />
+      <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
+        Live demo of SegLLM. Each query builds on the mask from the previous round.
+      </p>
+
       <!-- ── Section 3 ── -->
       <div class="section-label">
         <span class="section-num">03</span>
-        <span class="section-title">Experiment</span>
+        <span class="section-title">Training</span>
         <span class="section-line"></span>
       </div>
 
@@ -1250,23 +1237,7 @@ layout: blank
       </div>
 
       <p class="body-text">
-        The training data consists of multi-round conversational segmentation queries built on top of several existing public datasets, including RefCOCO, Visual Genome, PACO-LVIS, LVIS, Pascal Panoptic Part, ADE20K, and COCO-Stuff, among others. Since none of these datasets originally come as conversations, they have to be turned into one: the pipeline first selects a set of instances in an image, works out the relationships between them, and then fits those instances and relationships into conversational templates, which are refined with GPT-4 afterwards so the final questions read naturally.
-      </p>
-
-      <p class="body-text">
-        Which relationship type a conversation uses depends on which source dataset it is drawn from, since each dataset already provides a different kind of connection between objects. Hierarchical relationships, where a query asks about a sub-part of something already segmented, for example "the hand of" a person, come from PACO-LVIS and Pascal Panoptic Part, since these datasets already label parts alongside their parent objects. Positional relationships, where a query refers to an object by its location relative to a previous one, for example "to the left of", are drawn mainly from RefCOCO(+/g) and LVIS. Interactional relationships, where a query refers to what an object is doing, for example "looking at", come from datasets such as Visual Genome, which annotate actions and interactions between objects directly.
-      </p>
-
-      <p class="body-text">
-        Not every source dataset can support long conversations either. Some, like Visual Genome or COCO-Stuff, mostly provide single-round queries, while others, like RefCOCO or PACO-LVIS, are rich enough in related instances to support conversations of well over ten rounds. This range is intentional: it lets SegLLM see both short, simple queries and long, relationship-heavy ones during training.
-      </p>
-
-      <img src="assets/dataset.png"
-        alt="Dataset overview"
-        style="width: 100%; border-radius: 8px; margin: 1rem 0 0.4rem;"
-      />
-      <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
-        Figure 3: Dataset overview showing multi-round conversational segmentation examples across different object relationship types.
+        The training data consists of multi-round conversational segmentation queries built on top of several existing public datasets, including RefCOCO, Visual Genome, PACO-LVIS, LVIS, Pascal Panoptic Part, ADE20K, and COCO-Stuff, among others. Since none of these datasets originally come as conversations, they have to be turned into one: starting from a source dataset, the pipeline first selects a set of instances in an image, works out the relationships between them, and then fits those instances and relationships into conversational templates, which are refined with GPT-4 afterwards so the final questions read naturally.
       </p>
 
       <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 1.3rem 0 0.4rem; padding: 18px; background: var(--bg-2); border-radius: 10px; border: 1px solid var(--border);">
@@ -1282,7 +1253,23 @@ layout: blank
       </div>
 
       <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
-        Figure 3a: The MRSeg dataset construction pipeline.
+        Figure 6: The MRSeg dataset construction pipeline.
+      </p>
+
+      <p class="body-text">
+        Which relationship type a conversation uses depends on which source dataset it is drawn from, since each dataset already provides a different kind of connection between objects. Hierarchical relationships, where a query asks about a sub-part of something already segmented, for example "the hand of" a person, come from PACO-LVIS and Pascal Panoptic Part, since these datasets already label parts alongside their parent objects. Positional relationships, where a query refers to an object by its location relative to a previous one, for example "to the left of", are drawn mainly from RefCOCO(+/g) and LVIS. Interactional relationships, where a query refers to what an object is doing, for example "looking at", come from datasets such as Visual Genome, which annotate actions and interactions between objects directly.
+      </p>
+
+      <p class="body-text">
+        Not every source dataset can support long conversations either. Some, like Visual Genome or COCO-Stuff, mostly provide single-round queries, while others, like RefCOCO or PACO-LVIS, are rich enough in related instances to support conversations of well over ten rounds. This range is intentional: it lets SegLLM see both short, simple queries and long, relationship-heavy ones during training.
+      </p>
+
+      <img src="assets/dataset.png"
+        alt="Dataset overview"
+        style="width: 100%; border-radius: 8px; margin: 1rem 0 0.4rem;"
+      />
+      <p style="font-size: 12.5px; color: var(--text-4); text-align: center; margin-bottom: 1.5rem;">
+        Figure 7: Dataset overview showing multi-round conversational segmentation examples across different object relationship types.
       </p>
 
       <div class="info-card-grid" style="grid-template-columns: 1fr;">
@@ -1333,7 +1320,7 @@ layout: blank
       </p>
 
       <p class="body-text">
-        At training time, the ground-truth mask and box embeddings are inserted directly after each <code>[SEG]</code> token, rather than the model's own predictions. This is called <strong>teacher forcing</strong>, and it is standard practice for training sequence models: it stops small early mistakes from throwing off everything that follows, so the model always learns from a clean, correct history. At inference time, no ground truth is available, so the model instead feeds its own previous outputs back in, exactly as shown in Figure 0c.
+        At training time, the ground-truth mask and box embeddings are inserted directly after each <code>[SEG]</code> token, rather than the model's own predictions. This is called <strong>teacher forcing</strong>, and it is standard practice for training sequence models: it stops small early mistakes from throwing off everything that follows, so the model always learns from a clean, correct history. At inference time, no ground truth is available, so the model instead feeds its own previous outputs back in.
       </p>
 
       <p class="body-text">
@@ -1662,7 +1649,7 @@ layout: blank
           <li class="active">Motivation</li>
           <li>Background &amp; Problem</li>
           <li>Method</li>
-          <li>Experiments</li>
+          <li>Training</li>
           <li>Results</li>
           <li>Our Opinion</li>
           <li>References</li>
